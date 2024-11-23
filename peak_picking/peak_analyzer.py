@@ -4,8 +4,8 @@ from scipy.signal import peak_widths
 from scipy.integrate import trapz
 from typing import Tuple
 
-from peak import Peak
-from peak_picking.chromatogram import Chromatogram
+from .peak import Peak
+from .peak_picking.chromatogram import Chromatogram
 
 @dataclass
 class PeakAnalyzer:

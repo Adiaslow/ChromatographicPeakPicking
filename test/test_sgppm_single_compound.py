@@ -21,6 +21,11 @@ times_array = times
 intensities_array = intensities
 building_blocks = ['DVal', 'DβHomoleu', 'DβHomoleu']
 
+
+print(f"Times: {times_array}")
+print(f"Intensities: {intensities_array}")
+print(f"Building Blocks: {building_blocks}")
+
 building_blocks = [
     BuildingBlock(name=building_blocks[0]),
     BuildingBlock(name=building_blocks[1]),
@@ -32,6 +37,7 @@ _chromatogram = Chromatogram(
     y=intensities_array,
     building_blocks=building_blocks,
 )
+
 
 peak_picking_model = SimpleGaussianPeakPickingModel()
 

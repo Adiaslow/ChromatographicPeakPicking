@@ -20,7 +20,7 @@ class SGPPMConfig(Config):
     """
     correction_method = "SWM"
     window_length = 3
-    height_threshold = 4380316.1070267465
+    height_threshold = 10
     stddev_threshold = 1.164
     fit_points = 100
     search_rel_height = 0.001

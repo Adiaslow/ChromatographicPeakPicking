@@ -2,8 +2,8 @@ from dataclasses import dataclass
 import numpy as np
 from typing import List, Optional
 
-from peak import Peak
-from peak_picking.building_block import BuildingBlock
+from .peak import Peak
+from .building_block import BuildingBlock
 
 @dataclass
 class Chromatogram:

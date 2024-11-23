@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 @dataclass
 class Peak:
@@ -228,16 +228,16 @@ class Peak:
         if self._get_attributes() == [None] * len(self._get_attributes()):
             raise ValueError("Cannot hash peak with all None values")
 
-        return f"Peak with time {self.time}" + \
-        f"index {self.index}" + \
-        f"height {self.height}" + \
-        f"width {self.width}" + \
-        f"left_base {self.left_base}" + \
-        f"right_base {self.right_base}" + \
-        f"area {self.area}" + \
-        f"symmetry {self.symmetry}" + \
-        f"skewness {self.skewness}" + \
-        f"score {self.score}"
+        return f"Peak with time {self.time}, " + \
+        f"index {self.index}, " + \
+        f"height {self.height}, " + \
+        f"width {self.width}, " + \
+        f"left_base {self.left_base}, " + \
+        f"right_base {self.right_base}, " + \
+        f"area {self.area}, " + \
+        f"symmetry {self.symmetry}, " + \
+        f"skewness {self.skewness}, " + \
+        f"score {self.score}, "
 
 
     def __repr__(self) -> str:

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from config import Config
+from .config import Config
 
 @dataclass
 class SGPPMConfig(Config):

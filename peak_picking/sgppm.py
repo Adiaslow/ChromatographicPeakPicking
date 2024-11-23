@@ -13,7 +13,6 @@ from .peak import Peak
 from .peak_analyzer import PeakAnalyzer
 from .peak_picker import PeakPicker
 from .sgppm_config import SGPPMConfig
-from peak_picking import chromatogram
 
 @dataclass
 class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):

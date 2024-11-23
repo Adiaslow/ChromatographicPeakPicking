@@ -44,4 +44,4 @@ def test_sgppm_single_compound():
 
     _chromtogram = peak_picking_model.pick_peaks(chromatograms=_chromatogram)
 
-    print(_chromatogram)
+    return _chromatogram

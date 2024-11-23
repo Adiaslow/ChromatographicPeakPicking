@@ -6,13 +6,13 @@ from scipy.signal.windows import tukey
 from scipy.interpolate import interp1d
 from typing import List, Optional, Tuple, Union
 
-from baseline_corrector import BaselineCorrector
-from chromatogram import Chromatogram
-from gaussian_curve import gaussian_curve
-from peak import Peak
-from peak_analyzer import PeakAnalyzer
-from peak_picker import PeakPicker
-from sgppm_config import SGPPMConfig
+from .baseline_corrector import BaselineCorrector
+from .chromatogram import Chromatogram
+from .gaussian_curve import gaussian_curve
+from .peak import Peak
+from .peak_analyzer import PeakAnalyzer
+from .peak_picker import PeakPicker
+from .sgppm_config import SGPPMConfig
 
 @dataclass
 class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):

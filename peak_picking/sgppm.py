@@ -161,6 +161,17 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         return chromatograms
 
     def _select_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
+        """Select peaks in chromatograms
+
+        Args:
+            chromatograms (List[Chromatogram]): chromatograms to be analyzed
+
+        Returns:
+            List[Chromatogram]: chromatograms with peaks selected
+
+        Raises:
+            ValueError: if height thresholds are negative
+        """
         if self.config.height_threshold < 0 or self.config.pick_rel_height < 0:
             raise ValueError("Height thresholds must be non-negative")
 

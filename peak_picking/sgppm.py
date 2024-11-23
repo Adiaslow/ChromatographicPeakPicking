@@ -13,6 +13,7 @@ from .peak import Peak
 from .peak_analyzer import PeakAnalyzer
 from .peak_picker import PeakPicker
 from .sgppm_config import SGPPMConfig
+from peak_picking import chromatogram
 
 @dataclass
 class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
@@ -78,6 +79,17 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
 
     def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
+        """Find peaks in chromatograms
+
+        Args:
+            chromatograms (List[Chromatogram]): chromatograms to be analyzed
+
+        Returns:
+            List[Chromatogram]: chromatograms with peaks found
+
+        Raises:
+            RuntimeError: if peak fitting fails
+        """
         for chrom in chromatograms:
             peaks, properties = find_peaks(chrom.y_corrected, height=self.config.height_threshold)
             fitting_gaussians = []

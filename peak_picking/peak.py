@@ -35,8 +35,10 @@ class Peak:
     index: Optional[int] = np.NaN
     height: Optional[float] = np.NaN
     width: Optional[float] = np.NaN
-    left_base: Optional[float] = np.NaN
-    right_base: Optional[float] = np.NaN
+    left_base_time: Optional[float] = np.NaN
+    right_base_time: Optional[float] = np.NaN
+    left_base_index: Optional[int] = np.NaN
+    right_base_index: Optional[int] = np.NaN
     area: Optional[float] = np.NaN
     symmetry: Optional[float] = np.NaN
     skewness: Optional[float] = np.NaN
@@ -61,8 +63,10 @@ class Peak:
             self.index,
             self.height,
             self.width,
-            self.left_base,
-            self.right_base,
+            self.left_base_time,
+            self.right_base_time,
+            self.left_base_index,
+            self.right_base_index,
             self.area,
             self.symmetry,
             self.skewness,
@@ -205,8 +209,10 @@ class Peak:
             self.index,
             self.height,
             self.width,
-            self.left_base,
-            self.right_base,
+            self.left_base_time,
+            self.right_base_time,
+            self.left_base_index,
+            self.right_base_index,
             self.area,
             self.symmetry,
             self.skewness,
@@ -232,8 +238,10 @@ class Peak:
         f"index {self.index}, " + \
         f"height {self.height}, " + \
         f"width {self.width}, " + \
-        f"left_base {self.left_base}, " + \
-        f"right_base {self.right_base}, " + \
+        f"left_base_time {self.left_base_time}, " + \
+        f"right_base_time {self.right_base_time}, " + \
+        f"left_base_index {self.left_base_index}, " + \
+        f"right_base_index {self.right_base_index}, " + \
         f"area {self.area}, " + \
         f"symmetry {self.symmetry}, " + \
         f"skewness {self.skewness}, " + \

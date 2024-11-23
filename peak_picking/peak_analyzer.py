@@ -73,8 +73,10 @@ class PeakAnalyzer:
         while right_base < len(y)-1 and y[right_base+1] < y[right_base]:
             right_base += 1
 
-        peak.left_base = x[left_base]
-        peak.right_base = x[right_base]
+        peak.left_base_index = left_base
+        peak.right_base_index = right_base
+        peak.left_base_time = x[left_base]
+        peak.right_base_time = x[right_base]
         return peak
 
 
@@ -98,7 +100,7 @@ class PeakAnalyzer:
             None
         """
         peak = PeakAnalyzer._find_peak_boundaries(x, y, peak)
-        peak.width = x[peak.right_base] - x[peak.left_base]
+        peak.width = x[peak.right_base_index] - x[peak.left_base_index]
         return peak
 
 
@@ -121,7 +123,7 @@ class PeakAnalyzer:
         Raises:
             None
         """
-        peak.area = trapz(y[peak.left_base:peak.right_base+1], x[peak.left_base:peak.right_base+1])
+        peak.area = trapz(y[peak.left_base_index:peak.right_base_index+1], x[peak.left_base_index:peak.right_base_index+1])
         return peak
 
 

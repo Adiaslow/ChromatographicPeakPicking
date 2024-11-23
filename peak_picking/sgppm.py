@@ -70,92 +70,96 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             None
         """
         for chrom in chromatograms:
-            chrom.y_corrected = BaselineCorrector.correct_baseline(y=chrom.y, method=method)
+            chrom.y_corrected = BaselineCorrector.correct_baseline(
+                y=chrom.y,
+                method=self.config.correction_method
+            )
         return chromatograms
 
 
     def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
-            for chrom in chromatograms:
-                peaks, properties = find_peaks(chrom.y_corrected, height=self.config.height_threshold)
-                fitting_gaussians = []
+        for chrom in chromatograms:
+            peaks, properties = find_peaks(chrom.y_corrected, height=self.config.height_threshold)
+            fitting_gaussians = []
 
-                widths = peak_widths(chrom.y_corrected, peaks, rel_height=self.config.search_rel_height)[0]
+            # Calculate peak widths
+            widths = peak_widths(chrom.y_corrected, peaks, rel_height=self.config.search_rel_height)[0]
 
-                for idx, peak in enumerate(peaks):
-                    if chrom.x[peak] < min(chrom.x) or chrom.x[peak] > max(chrom.x):
-                        continue
+            # Process each peak
+            for idx, peak in enumerate(peaks):
+                # Check if peak is within valid range
+                if chrom.x[peak] < min(chrom.x) or chrom.x[peak] > max(chrom.x):
+                    continue
 
-                    fit_width = widths[idx] + 1
-                    fit_indices = (chrom.x >= (chrom.x[peak] - fit_width)) \
-                    & (chrom.x <= (chrom.x[peak] + fit_width))
+                # Calculate fitting window
+                fit_width = widths[idx] + 1
+                fit_x = np.linspace(chrom.x[peak] - fit_width, chrom.x[peak] + fit_width, self.config.fit_points)
+                fit_y = np.interp(fit_x, chrom.x, chrom.y_corrected)
 
-                    fit_x = np.linspace(chrom.x[peak] - fit_width, chrom.x[peak] + fit_width, self.config.fit_points)
-                    fit_y = np.interp(fit_x, chrom.x, chrom.y_corrected)
+                if len(fit_x) < 3:
+                    continue
 
-                    if len(fit_x) < 3:
-                        continue
+                # Set up gaussian fitting parameters
+                initial_guesses = [
+                    properties['peak_heights'][idx],
+                    chrom.x[peak],
+                    widths[idx]
+                ]
 
-                    initial_guesses = [
-                        properties['peak_heights'][idx],
-                        chrom.x[peak],
-                        widths[idx]
-                    ]
+                bounds = (
+                    [0, chrom.x[peak] - fit_width, 1e-6],
+                    [properties['peak_heights'][idx] * 1.5, chrom.x[peak] + fit_width, fit_width]
+                )
 
-                    amplitude_bounds = (0, properties['peak_heights'][idx] * 1.5)
-                    mean_bounds = (chrom.x[peak] - fit_width, chrom.x[peak] + fit_width)
-                    stddev_bounds = (1e-6, fit_width)
-
-                    bounds = (
-                        [amplitude_bounds[0], mean_bounds[0], stddev_bounds[0]],
-                        [amplitude_bounds[1], mean_bounds[1], stddev_bounds[1]]
+                try:
+                    # Fit gaussian to peak
+                    popt, _ = curve_fit(
+                        gaussian_curve,
+                        fit_x,
+                        fit_y,
+                        p0=initial_guesses,
+                        bounds=bounds,
+                        maxfev=3000
                     )
+                except RuntimeError:
+                    print(f"Could not fit a Gaussian to the peak at x = {chrom.x[peak]}")
+                    continue
 
-                    try:
-                        popt, _ = curve_fit(
-                            gaussian_curve,
-                            fit_x,
-                            fit_y,
-                            p0=initial_guesses,
-                            bounds=bounds,
-                            maxfev=3000
-                        )
-                    except RuntimeError:
-                        print(f"Could not fit a Gaussian to the peak at x = {chrom.x[peak]}")
-                        continue
+                # Validate fitted peak
+                if popt[2] < self.config.stddev_threshold and min(chrom.x) <= popt[1] <= max(chrom.x):
+                    window = tukey(len(fit_x), alpha=0.75)
+                    fit_y_values = gaussian_curve(fit_x, *popt) * window
+                    fitting_gaussians.append((fit_x, fit_y_values, popt))
 
-                    if popt[2] < self.config.stddev_threshold and min(chrom.x) <= popt[1] <= max(chrom.x):
-                        window = tukey(len(fit_x), alpha=0.75)
-                        fit_y_values = gaussian_curve(fit_x, *popt) * window
-                        fitting_gaussians.append((fit_x, fit_y_values, popt))
+            # Create Peak objects
+            chrom.peaks = []
+            for i, peak in enumerate(peaks):
+                if i >= len(fitting_gaussians):
+                    continue
 
-                chrom.peaks = []  # Reset peaks before adding new ones
-                for i, peak in enumerate(peaks):
-                    if i >= len(fitting_gaussians):  # Skip if no corresponding gaussian fit
-                        continue
+                _peak = Peak(
+                    time=chrom.x[peak],
+                    index=peak,
+                    height=chrom.y_corrected[peak],
+                    approximation_curve=fitting_gaussians[i]
+                )
+                _peak = PeakAnalyzer.analyze_peak(chrom.x, chrom.y_corrected, _peak)
+                chrom.peaks.append(_peak)
 
-                    _peak = Peak(
-                        time=chrom.x[peak],
-                        index=peak,
-                        height=chrom.y_corrected[peak],
-                        approximation_curve=fitting_gaussians[i]
-                    )
-
-                    _peak = PeakAnalyzer.analyze_peak(chrom.x, chrom.y_corrected, _peak)
-                    chrom.peaks.append(_peak)
-
-            return chromatograms
+        return chromatograms
 
     def _select_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
         if self.config.height_threshold < 0 or self.config.pick_rel_height < 0:
             raise ValueError("Height thresholds must be non-negative")
 
         for chrom in chromatograms:
-            chrom.picked_peak = None  # Reset picked peak
+            chrom.picked_peak = None
             gaussians = [peak.approximation_curve for peak in chrom.peaks]
-            if len(gaussians) == 0:
-                print("No peaks found in chromatogram")
+
+            if not gaussians:
                 continue
 
+            # Find valid gaussians based on height thresholds
             max_y = np.max(chrom.y_corrected)
             valid_gaussians = [
                 (gaussian[2][1], gaussian)
@@ -165,9 +169,9 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             ]
 
             if not valid_gaussians:
-                print("No valid peaks found in chromatogram")
                 continue
 
+            # Select the best peak based on position
             best_mean, best_gaussian = max(valid_gaussians, key=lambda x: x[0])
             picked_peak = Peak(
                 time=best_mean,

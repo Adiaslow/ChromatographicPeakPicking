@@ -22,9 +22,6 @@ def test_sgppm_single_compound():
     intensities_array = intensities
     building_blocks = ['DVal', 'DβHomoleu', 'DβHomoleu']
 
-
-    print(f"Times: {times_array}")
-    print(f"Intensities: {intensities_array}")
     print(f"Building Blocks: {building_blocks}")
 
     building_blocks = [

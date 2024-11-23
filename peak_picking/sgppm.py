@@ -155,7 +155,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             max_y = np.max(chrom.y_corrected)
             valid_gaussians = [
                 (gaussian[2][1], gaussian)
-                for gaussian in gaussians:
+                for gaussian in gaussians
                 if (chrom.y_corrected[int(gaussian[2][1])] >= SGPPMConfig.height_threshold and
                     chrom.y_corrected[int(gaussian[2][1])] >= max_y * SGPPMConfig.pick_rel_height)
             ]

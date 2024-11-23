@@ -179,6 +179,8 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                 height=chrom.y_corrected[int(np.round(best_mean))],
                 approximation_curve=best_gaussian
             )
-            chrom.picked_peak = PeakAnalyzer.analyze_peak(picked_peak, chrom)
+            peak_analyzer = PeakAnalyzer()
+
+            chrom.picked_peak = peak_analyzer.analyze_peak(picked_peak, chrom)
 
         return chromatograms

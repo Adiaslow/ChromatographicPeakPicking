@@ -42,10 +42,11 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             ValueError: if input is not a Chromatogram or a list of Chromatograms
 
         """
-        if chromatograms is not List[Chromatogram] and chromatograms is Chromatogram:
-            chromatograms = [chromatograms]
-        elif chromatograms is not List[Chromatogram] and chromatograms is not Chromatogram:
+        if isinstance(chromatograms, Chromatogram):
+                chromatograms = [chromatograms]
+        elif not isinstance(chromatograms, list) or not all(isinstance(c, Chromatogram) for c in chromatograms):
             raise ValueError("Input must be a Chromatogram or a list of Chromatograms")
+
 
         chromatograms = SimpleGaussianPeakPickingModel._prepare_chromatograms(chromatograms)
         chromatograms = SimpleGaussianPeakPickingModel._find_peaks(chromatograms)

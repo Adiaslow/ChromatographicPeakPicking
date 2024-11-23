@@ -145,36 +145,36 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
             return chromatograms
 
-        def _select_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
-            if self.config.height_threshold < 0 or self.config.pick_rel_height < 0:
-                raise ValueError("Height thresholds must be non-negative")
+    def _select_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
+        if self.config.height_threshold < 0 or self.config.pick_rel_height < 0:
+            raise ValueError("Height thresholds must be non-negative")
 
-            for chrom in chromatograms:
-                chrom.picked_peak = None  # Reset picked peak
-                gaussians = [peak.approximation_curve for peak in chrom.peaks]
-                if len(gaussians) == 0:
-                    print("No peaks found in chromatogram")
-                    continue
+        for chrom in chromatograms:
+            chrom.picked_peak = None  # Reset picked peak
+            gaussians = [peak.approximation_curve for peak in chrom.peaks]
+            if len(gaussians) == 0:
+                print("No peaks found in chromatogram")
+                continue
 
-                max_y = np.max(chrom.y_corrected)
-                valid_gaussians = [
-                    (gaussian[2][1], gaussian)
-                    for gaussian in gaussians
-                    if (chrom.y_corrected[int(np.round(gaussian[2][1]))] >= self.config.height_threshold and
-                        chrom.y_corrected[int(np.round(gaussian[2][1]))] >= max_y * self.config.pick_rel_height)
-                ]
+            max_y = np.max(chrom.y_corrected)
+            valid_gaussians = [
+                (gaussian[2][1], gaussian)
+                for gaussian in gaussians
+                if (chrom.y_corrected[int(np.round(gaussian[2][1]))] >= self.config.height_threshold and
+                    chrom.y_corrected[int(np.round(gaussian[2][1]))] >= max_y * self.config.pick_rel_height)
+            ]
 
-                if not valid_gaussians:
-                    print("No valid peaks found in chromatogram")
-                    continue
+            if not valid_gaussians:
+                print("No valid peaks found in chromatogram")
+                continue
 
-                best_mean, best_gaussian = max(valid_gaussians, key=lambda x: x[0])
-                picked_peak = Peak(
-                    time=best_mean,
-                    index=int(np.round(best_mean)),
-                    height=chrom.y_corrected[int(np.round(best_mean))],
-                    approximation_curve=best_gaussian
-                )
-                chrom.picked_peak = PeakAnalyzer.analyze_peak(chrom.x, chrom.y_corrected, picked_peak)
+            best_mean, best_gaussian = max(valid_gaussians, key=lambda x: x[0])
+            picked_peak = Peak(
+                time=best_mean,
+                index=int(np.round(best_mean)),
+                height=chrom.y_corrected[int(np.round(best_mean))],
+                approximation_curve=best_gaussian
+            )
+            chrom.picked_peak = PeakAnalyzer.analyze_peak(chrom.x, chrom.y_corrected, picked_peak)
 
-            return chromatograms
+        return chromatograms

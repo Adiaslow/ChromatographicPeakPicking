@@ -48,9 +48,9 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             raise ValueError("Input must be a Chromatogram or a list of Chromatograms")
 
 
-        chromatograms = SimpleGaussianPeakPickingModel._prepare_chromatograms(chromatograms)
-        chromatograms = SimpleGaussianPeakPickingModel._find_peaks(chromatograms)
-        chromatograms = SimpleGaussianPeakPickingModel._select_peaks(chromatograms)
+        chromatograms = self._prepare_chromatograms(chromatograms)
+        chromatograms = self._find_peaks(chromatograms)
+        chromatograms = self._select_peaks(chromatograms)
 
         if len(chromatograms) == 1:
             return chromatograms[0]

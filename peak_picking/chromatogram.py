@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 from typing import List, Optional
 
@@ -33,7 +33,7 @@ class Chromatogram:
     x: Optional[np.array] = None
     y: Optional[np.array] = None
     y_corrected: Optional[np.array] = None
-    peaks: Optional[List[Peak]] = None
+    peaks: List[Peak] = field(default_factory=list)
     picked_peak: Optional[Peak] = None
     building_blocks: Optional[List[BuildingBlock]] = None
 

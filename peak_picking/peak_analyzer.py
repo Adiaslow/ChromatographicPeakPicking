@@ -47,6 +47,7 @@ class PeakAnalyzer:
 
     @staticmethod
     def _find_peak_boundaries(
+        x: np.ndarray,
         y: np.ndarray,
         peak: Peak
     ) -> Peak:
@@ -72,8 +73,8 @@ class PeakAnalyzer:
         while right_base < len(y)-1 and y[right_base+1] < y[right_base]:
             right_base += 1
 
-        peak.left_base = left_base
-        peak.right_base = right_base
+        peak.left_base = x[left_base]
+        peak.right_base = x[right_base]
         return peak
 
 
@@ -96,7 +97,7 @@ class PeakAnalyzer:
         Raises:
             None
         """
-        peak = PeakAnalyzer._find_peak_boundaries(y, peak)
+        peak = PeakAnalyzer._find_peak_boundaries(x, y, peak)
         peak.width = x[peak.right_base] - x[peak.left_base]
         return peak
 

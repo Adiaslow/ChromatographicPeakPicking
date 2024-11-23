@@ -144,8 +144,8 @@ class PeakAnalyzer:
         Raises:
             None
         """
-        left_half = y[peak.left_base:peak.index+1]
-        right_half = y[peak.index:peak.right_base+1][::-1]
+        left_half = y[peak.left_base_index:peak.index+1]
+        right_half = y[peak.index:peak.right_base_index+1][::-1]
 
         min_length = min(len(left_half), len(right_half))
         left_half = left_half[-min_length:]
@@ -172,7 +172,7 @@ class PeakAnalyzer:
         Raises:
             None
         """
-        _peak = y[peak.left_base:peak.right_base+1]
+        _peak = y[peak.left_base_index:peak.right_base_index+1]
         _peak = (_peak - np.mean(_peak)) / np.std(_peak)
         peak.skewness = np.mean(_peak**3)
         return peak

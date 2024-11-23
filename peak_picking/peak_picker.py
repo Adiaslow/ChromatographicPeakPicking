@@ -2,9 +2,9 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Generic, List, TypeVar, Union
 
-from chromatogram import Chromatogram
-from config import Config
-from peak import Peak
+from .chromatogram import Chromatogram
+from .config import Config
+from .peak import Peak
 
 ConfigT = TypeVar('ConfigT', bound='Config')
 

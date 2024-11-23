@@ -5,7 +5,7 @@ from scipy.integrate import trapz
 from typing import Tuple
 
 from .peak import Peak
-from .peak_picking.chromatogram import Chromatogram
+from .chromatogram import Chromatogram
 
 @dataclass
 class PeakAnalyzer:

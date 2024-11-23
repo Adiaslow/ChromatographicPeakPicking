@@ -25,7 +25,7 @@ class PeakPicker(Generic[ConfigT]):
 
 
     @abstractmethod
-    def pick_peaks(self, chromatograms: Union[List[Chromatogram], Chromatogram]) -> Union[List[Chromatogram], Chromatogram]]:
+    def pick_peaks(self, chromatograms: Union[List[Chromatogram], Chromatogram]) -> Union[List[Chromatogram], Chromatogram]:
         """Abstract method for picking peaks in chromatograms
 
         Args:

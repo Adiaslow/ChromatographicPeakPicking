@@ -29,7 +29,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
     """
     config: SGPPMConfig = SGPPMConfig()
 
-    def pick_peaks(self, chromatograms: Union[List[chrom], chrom]) -> Union[List[chrom], chrom]:
+    def pick_peaks(self, chromatograms: Union[List[Chromatogram], Chromatogram]) -> Union[List[Chromatogram], Chromatogram]:
         """Pick peaks in chromatograms.
 
         Args:

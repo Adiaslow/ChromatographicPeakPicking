@@ -93,8 +93,8 @@ class PeakAnalyzer:
             min(peak.peak_metrics['resolution'] / 2, 1),
             1 - abs(peak.peak_metrics['skewness']) / 2
         ]
-
+        # Emphasize prominence and scale by area
         peak.peak_metrics['score'] = (np.mean(metrics) *
-                                            peak.peak_metrics['height'] *
-                                            peak.peak_metrics['area'] / peak.peak_metrics['height'])  # Normalizes area
+                                    peak.peak_metrics['prominence'] *  # Use prominence instead of height
+                                    peak.peak_metrics['area'])  # Area captures overall peak significance
         return peak

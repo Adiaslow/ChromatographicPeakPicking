@@ -76,9 +76,8 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         return chromatograms
 
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
-        # Get peak boundaries instead of fixed window
-        left_idx = peak.peak_metrics['left_boundary']
-        right_idx = peak.peak_metrics['right_boundary']
+        left_idx = int(peak.peak_metrics['left_base_index'])
+        right_idx = int(peak.peak_metrics['right_base_index'])
 
         section_x = x[left_idx:right_idx]
         section_y = y[left_idx:right_idx]
@@ -88,37 +87,30 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             peak_idx = peak.peak_metrics['index']
             mean = x[peak_idx]
 
-            # Estimate width from peak boundaries
-            width = (x[right_idx] - x[left_idx]) / 2.355  # Convert FWHM to sigma
+            # Width estimate from peak boundaries
+            width = (x[right_idx] - x[left_idx]) / 2.355
 
-            # Wider bounds for better fitting
-            amplitude_bounds = (height * 0.5, height * 3.0)
+            # Adjusted bounds for better fitting
+            amplitude_bounds = (height * 0.5, height * 2.0)
             mean_bounds = (x[left_idx], x[right_idx])
-            width_bounds = (width * 0.2, width * 3.0)
+            width_bounds = (width * 0.3, width * 2.0)
 
             p0 = [height, mean, width]
             bounds = ([amplitude_bounds[0], mean_bounds[0], width_bounds[0]],
                      [amplitude_bounds[1], mean_bounds[1], width_bounds[1]])
 
-            popt, pcov = curve_fit(gaussian_curve,
+            popt, _ = curve_fit(gaussian_curve,
                               section_x,
                               section_y,
                               p0=p0,
                               bounds=bounds,
-                              maxfev=5000)  # Increased iterations
-
-            # Calculate R-squared for fit quality
-            residuals = section_y - gaussian_curve(section_x, *popt)
-            ss_res = np.sum(residuals**2)
-            ss_tot = np.sum((section_y - np.mean(section_y))**2)
-            r_squared = 1 - (ss_res / ss_tot)
+                              maxfev=5000)
 
             peak.peak_metrics.update({
-                'gaussian_residuals': ss_res / height,
+                'gaussian_residuals': np.sum((section_y - gaussian_curve(section_x, *popt))**2) / height,
                 'fit_amplitude': popt[0],
                 'fit_mean': popt[1],
                 'fit_stddev': popt[2],
-                'fit_r_squared': r_squared,
                 'approximation_curve': self._generate_approximation_curve(x, section_x, popt, left_idx, right_idx)
             })
 

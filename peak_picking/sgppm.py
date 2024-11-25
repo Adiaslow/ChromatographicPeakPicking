@@ -157,59 +157,26 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             if not chrom.peaks:
                 continue
 
-            total_time = chrom.x[-1]
             max_height = max(peak.peak_metrics['height'] for peak in chrom.peaks)
+            max_area = max(peak.peak_metrics['area'] for peak in chrom.peaks)
 
             for peak in chrom.peaks:
-                relative_time = peak.peak_metrics['time'] / total_time
-                relative_height = peak.peak_metrics['height'] / max_height
+                # Calculate comprehensive score using multiple metrics
+                combined_score = (
+                    (peak.peak_metrics['area'] / max_area) *
+                    (peak.peak_metrics['height'] / max_height) *
+                    peak.peak_metrics['prominence'] *
+                    peak.peak_metrics['symmetry'] *
+                    (1 / (1 + peak.peak_metrics['gaussian_residuals']))
+                )
 
-                # Stronger early peak penalty
+                # Apply strong time penalty for early peaks
+                relative_time = peak.peak_metrics['time'] / chrom.x[-1]
                 if relative_time < 0.3:
-                    time_weight = 0.1 + 0.9 * (relative_time / 0.3) ** 3  # Cubic penalty
-                elif relative_time > 0.8:
-                    time_weight = np.exp(-(relative_time - 0.8) / 0.1)
-                else:
-                    time_weight = 1.0
+                    combined_score *= (relative_time / 0.3) ** 4  # Stronger penalty
 
-                # Favor larger peaks
-                height_weight = relative_height ** 2
-
-                # Combined weighting
-                peak.peak_metrics['score'] *= time_weight * height_weight
+                peak.peak_metrics['score'] = combined_score
 
             best_peak = max(chrom.peaks, key=lambda p: p.peak_metrics['score'])
-            if self._validate_peak_metrics(best_peak, chrom):
-                chrom.picked_peak = best_peak
 
         return chromatograms
-
-    def _validate_peak_metrics(self, peak: Peak, chromatogram: Chromatogram, debug: bool = True) -> bool:
-        def debug_print(msg: str):
-            if debug:
-                print(f"Peak at {peak.peak_metrics['time']:.2f} min failed: {msg}")
-
-        if peak.peak_metrics['score'] <= 0:
-            debug_print(f"score ({peak.peak_metrics['score']}) <= 0")
-            return False
-
-        if peak.peak_metrics['height'] < chromatogram.signal_metrics['noise_level'] * self.config.noise_factor:
-            debug_print(f"height ({peak.peak_metrics['height']}) < noise threshold ({chromatogram.signal_metrics['noise_level'] * self.config.noise_factor})")
-            return False
-
-        peak_width_relative = peak.peak_metrics['width'] / (chromatogram.x[-1] - chromatogram.x[0])
-        if not (self.config.width_min <= peak_width_relative <= self.config.width_max):
-            debug_print(f"relative width ({peak_width_relative:.3f}) outside range [{self.config.width_min}, {self.config.width_max}]")
-            return False
-
-        # Scale residuals threshold with peak height
-        adjusted_residuals_threshold = self.config.gaussian_residuals_threshold * (peak.peak_metrics['height'] / chromatogram.signal_metrics['noise_level'])
-        if peak.peak_metrics['gaussian_residuals'] > adjusted_residuals_threshold:
-            debug_print(f"gaussian residuals ({peak.peak_metrics['gaussian_residuals']:.2f}) > threshold ({adjusted_residuals_threshold})")
-            return False
-
-        if peak.peak_metrics['symmetry'] < self.config.symmetry_threshold:
-            debug_print(f"symmetry ({peak.peak_metrics['symmetry']:.2f}) < threshold ({self.config.symmetry_threshold})")
-            return False
-
-        return True

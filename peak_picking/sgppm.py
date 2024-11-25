@@ -47,40 +47,46 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
     def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
         for chrom in chromatograms:
             # Calculate minimum peak distance based on min_distance_factor
-            min_distance = int(len(chrom.x) * self.config.min_distance_factor)
+            # Reduced from original to allow closer peaks
+            min_distance = int(len(chrom.x) * (self.config.min_distance_factor * 0.5))
 
-            # Calculate height threshold based on noise level
-            noise_level = np.std(chrom.y_corrected[:100])  # Use first 100 points to estimate noise
+            # More lenient noise-based threshold
+            noise_level = np.std(chrom.y_corrected[:100])
             dynamic_height_threshold = max(
-                self.config.height_threshold,
-                noise_level * self.config.noise_factor
+                self.config.height_threshold * 0.7,  # Reduced height threshold
+                noise_level * (self.config.noise_factor * 0.7)  # Reduced noise factor
             )
 
-            # Calculate width constraints in data points
+            # Wider acceptable width range
             sampling_rate = (chrom.x[-1] - chrom.x[0]) / len(chrom.x)
-            width_min_points = int(self.config.width_min / sampling_rate)
-            width_max_points = int(self.config.width_max / sampling_rate)
+            width_min_points = int((self.config.width_min * 0.7) / sampling_rate)  # Reduced minimum width
+            width_max_points = int((self.config.width_max * 1.5) / sampling_rate)  # Increased maximum width
 
-            # Find peaks with stricter initial criteria
+            # Find peaks with more lenient criteria
             search_peaks, properties = find_peaks(
                 chrom.y_corrected,
                 height=dynamic_height_threshold,
-                distance=min_distance,  # Minimum distance between peaks
-                width=(width_min_points, width_max_points),  # Width constraints
-                rel_height=self.config.search_rel_height,
-                prominence=(dynamic_height_threshold * 0.5, None)  # Minimum prominence
+                distance=min_distance,
+                width=(width_min_points, width_max_points),
+                rel_height=self.config.search_rel_height * 0.8,  # More lenient relative height
+                prominence=(dynamic_height_threshold * 0.3, None)  # More lenient prominence
             )
 
             fitted_peaks = []
             for idx, peak_idx in enumerate(search_peaks):
+                if peak_idx < 3 or peak_idx > len(chrom.x) - 3:  # Skip extreme edges
+                    continue
+
                 peak_obj = Peak()
                 width_points = peak_widths(chrom.y_corrected, [peak_idx], rel_height=0.5)
                 left_idx = int(width_points[2][0])
                 right_idx = int(width_points[3][0])
 
-                # Skip peaks that are too close to the edges
-                if left_idx < 0 or right_idx >= len(chrom.x):
-                    continue
+                # More lenient edge handling
+                if left_idx < 0:
+                    left_idx = 0
+                if right_idx >= len(chrom.x):
+                    right_idx = len(chrom.x) - 1
 
                 peak_obj.peak_metrics.update({
                     'index': peak_idx,
@@ -93,14 +99,15 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                     'width': chrom.x[right_idx] - chrom.x[left_idx]
                 })
 
-                # Only fit peaks that meet initial criteria
-                if (peak_obj.peak_metrics['width'] >= self.config.width_min and
-                    peak_obj.peak_metrics['width'] <= self.config.width_max):
+                # More lenient width criteria for fitting
+                if (peak_obj.peak_metrics['width'] >= self.config.width_min * 0.7 and
+                    peak_obj.peak_metrics['width'] <= self.config.width_max * 1.5):
 
                     peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
-                    if peak_obj.peak_metrics.get('fit_stddev', float('inf')) < self.config.stddev_threshold:
+                    # More lenient stddev threshold
+                    if peak_obj.peak_metrics.get('fit_stddev', float('inf')) < self.config.stddev_threshold * 1.3:
                         fitted_peaks.append(peak_obj)
-                    peak_obj = PeakAnalyzer.analyze_peak(peak_obj, chrom)
+                        peak_obj = PeakAnalyzer.analyze_peak(peak_obj, chrom)
 
             chrom.peaks = fitted_peaks
         return chromatograms

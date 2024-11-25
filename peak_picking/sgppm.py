@@ -175,7 +175,9 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                 # Additional weight for taller peaks
                 height_weight = np.sqrt(relative_height)
 
-                peak.peak_metrics['score'] *= time_weight * height_weight
+                peak.peak_metrics['score'] *= time_weight * \
+                height_weight * \
+                peak.peak_metrics['score']
 
             best_peak = max(chrom.peaks, key=lambda p: p.peak_metrics['score'])
             if self._validate_peak_metrics(best_peak, chrom):

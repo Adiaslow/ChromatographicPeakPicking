@@ -90,20 +90,15 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         section_x = x[peak.peak_metrics['left_base_index']:peak.peak_metrics['right_base_index']+1]
         section_y = y[peak.peak_metrics['left_base_index']:peak.peak_metrics['right_base_index']+1]
 
-        # Initial parameter estimates
-        height = peak.peak_metrics['height']
-        center = x[peak.peak_metrics['index']]
-        width = peak.peak_metrics['width']
-
         try:
             popt, _ = curve_fit(gaussian_curve, section_x, section_y,
-                               p0=[height, center, width],
-                               bounds=([0, min(section_x), 0],
-                                     [height*2, max(section_x), width*5]))
+                               p0=[peak.peak_metrics['height'],
+                                   x[peak.peak_metrics['index']],
+                                   peak.peak_metrics['width']])
 
-            peak.peak_metrics['gaussian_residuals'] = np.sum((section_y - gaussian_curve(section_x, *popt))**2) / height
-            peak.peak_metrics['approximation_curve'] = gaussian_curve(section_x, *popt)
-        except (RuntimeError, OptimizeWarning):
+            peak.peak_metrics['gaussian_residuals'] = np.sum((section_y - gaussian_curve(section_x, *popt))**2)
+            peak.peak_metrics['approximation_curve'] = gaussian_curve(x, *popt)  # Use full x range
+        except RuntimeError:
             peak.peak_metrics['gaussian_residuals'] = float('inf')
 
         return peak

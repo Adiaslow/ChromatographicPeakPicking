@@ -20,9 +20,13 @@ class SGPPMConfig(Config):
     """
     correction_method = "SWM"
     window_length = 3
-    height_threshold = 10
-    stddev_threshold = 1.164
     fit_points = 100
     search_rel_height = 0.001
     pick_rel_height = 0.3
-    gaussian_residuals_threshold = 0.1
+    gaussian_residuals_threshold: float = 10.0
+    height_threshold: float = 0.0
+    stddev_threshold = 1.164
+    width_min: float = 0.1
+    width_max: float = 0.2
+    symmetry_threshold: float = 0.5
+    noise_factor: float = 3.0

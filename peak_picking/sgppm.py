@@ -158,13 +158,13 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
        if peak.peak_metrics['gaussian_residuals'] > self.config.gaussian_residuals_threshold:
            return False
 
-       if peak.peak_metrics['height'] < chromatogram.signal_metrics['noise_level'] * 3:
+       if peak.peak_metrics['height'] < chromatogram.signal_metrics['noise_level'] * self.config.noise_factor:
            return False
 
-       if not (0.1 <= peak.peak_metrics['width'] <= len(chromatogram.x) * 0.2):
+       if not (self.config.width_min <= peak.peak_metrics['width'] <= len(chromatogram.x) * self.config.width_max):
            return False
 
-       if peak.peak_metrics['symmetry'] < 0.5:
+       if peak.peak_metrics['symmetry'] < self.config.symmetry_threshold:
            return False
 
        return True

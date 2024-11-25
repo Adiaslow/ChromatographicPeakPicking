@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 from typing import Dict
 
@@ -22,7 +22,7 @@ class Peak:
         _validate_peak_metrics(self) -> bool: Check if at least one peak metric is not None or NaN
     """
 
-    peak_metrics: Dict = {
+    peak_metrics: Dict = field(default_factory=lambda: {
         'time': np.NaN,
         'index': np.NaN,
         'height': np.NaN,
@@ -39,7 +39,7 @@ class Peak:
         'gaussian_residuals': None,
         'score': np.NaN,
         'approximation_curve': None,
-    }
+    })
 
 
     def __eq__(self, other) -> bool:

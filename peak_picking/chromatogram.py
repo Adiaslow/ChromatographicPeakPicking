@@ -36,12 +36,12 @@ class Chromatogram:
     peaks: List[Peak] = field(default_factory=list)
     picked_peak: Optional[Peak] = None
     building_blocks: Optional[List[BuildingBlock]] = None
-    signal_metrics: Dict = {
+    signal_metrics: Dict = field(default_factory=lambda: {
         'noise': np.NaN,
         'signal_to_noise': np.NaN,
         'baseline_mean': np.NaN,
         'baseline_drift': np.NaN,
-    }
+    })
 
 
     def _validate_chromatograms(self, other) -> bool:

@@ -158,26 +158,19 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                 continue
 
             total_time = chrom.x[-1]
-            max_intensity = np.max(chrom.y_corrected)
-
             for peak in chrom.peaks:
                 relative_time = peak.peak_metrics['time'] / total_time
-                relative_height = peak.peak_metrics['height'] / max_intensity
 
-                # Penalize both very early and very late peaks
-                if relative_time < 0.3:  # Early peaks
+                # Time weight
+                if relative_time < 0.3:
                     time_weight = relative_time / 0.3
-                elif relative_time > 0.8:  # Late peaks (dimers)
+                elif relative_time > 0.8:
                     time_weight = np.exp(-(relative_time - 0.8) / 0.1)
                 else:
                     time_weight = 1.0
 
-                # Additional weight for taller peaks
-                height_weight = np.sqrt(relative_height)
-
-                peak.peak_metrics['score'] *= time_weight * \
-                height_weight * \
-                peak.peak_metrics['score']
+                # Combine with existing score
+                peak.peak_metrics['score'] *= time_weight
 
             best_peak = max(chrom.peaks, key=lambda p: p.peak_metrics['score'])
             if self._validate_peak_metrics(best_peak, chrom):

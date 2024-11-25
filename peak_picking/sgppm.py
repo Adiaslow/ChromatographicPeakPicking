@@ -76,7 +76,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             peaks, properties = find_peaks(chrom.y_corrected,
                                        height=noise_threshold,
                                        distance=min_distance,
-                                       prominence=noise_threshold * 0.5)
+                                       prominence=noise_threshold * 0.3)
 
             fitted_peaks = self._fit_gaussians(chrom, peaks, properties)
             chrom.peaks = fitted_peaks
@@ -88,14 +88,12 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         right_idx = peak.peak_metrics['right_base_index']
         fit_width = (right_idx - left_idx) // 2
 
-        # Use wider fitting window like old code
         fit_indices = (x >= (x[peak.peak_metrics['index']] - fit_width)) & \
                      (x <= (x[peak.peak_metrics['index']] + fit_width))
         section_x = x[fit_indices]
         section_y = y[fit_indices]
 
         try:
-            # Better initial guesses like old code
             amplitude_bounds = (0, peak.peak_metrics['height'] * 1.5)
             mean_bounds = (x[peak.peak_metrics['index']] - fit_width,
                           x[peak.peak_metrics['index']] + fit_width)

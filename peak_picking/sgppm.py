@@ -46,12 +46,12 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
     def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
         for chrom in chromatograms:
-            peaks, properties = find_peaks(chrom.y_corrected,
+            search_peaks, _ = find_peaks(chrom.y_corrected,
                                         height=self.config.height_threshold,
-                                        rel_height=self.config.rel_height)
+                                        rel_height=self.config.search_rel_height)
 
             fitted_peaks = []
-            for idx, peak_idx in enumerate(peaks):
+            for peak_idx in search_peaks:
                 peak_obj = Peak()
                 peak_obj.peak_metrics.update({
                     'index': peak_idx,
@@ -113,10 +113,19 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         return curve
 
     def _select_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
-            for chrom in chromatograms:
-                if chrom.peaks:
-                    # Select peak with highest amplitude
-                    best_peak = max(chrom.peaks,
-                                  key=lambda p: p.peak_metrics.get('fit_amplitude', 0))
-                    chrom.picked_peak = best_peak
-            return chromatograms
+        for chrom in chromatograms:
+            if not chrom.peaks:
+                continue
+
+            pick_peaks = []
+            for peak in chrom.peaks:
+                # Using pick_rel_height for final selection
+                if peak.peak_metrics['height'] > (max(chrom.y_corrected) * self.config.pick_rel_height):
+                    pick_peaks.append(peak)
+
+            if pick_peaks:
+                # Select peak with highest fitted amplitude
+                best_peak = max(pick_peaks, key=lambda p: p.peak_metrics.get('fit_amplitude', 0))
+                chrom.picked_peak = best_peak
+
+        return chromatograms

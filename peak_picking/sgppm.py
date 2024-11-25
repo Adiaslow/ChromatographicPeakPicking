@@ -78,7 +78,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
         """
-        Fit a Gaussian curve to peak data with improved noise handling and peak shape estimation.
+        Fit a Gaussian curve to peak data with interpolation for smoother results.
 
         Args:
             x: x-axis data
@@ -92,44 +92,52 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         section_y = y[left_idx:right_idx]
 
         try:
-            # Smooth the section data to reduce noise impact
+            # Create higher resolution x-values for interpolation
+            interp_factor = 10  # Number of points between each original point
+            x_interp = np.linspace(section_x[0], section_x[-1], len(section_x) * interp_factor)
+
+            # Smooth the section data
             window_length = min(7, len(section_y) - (len(section_y) % 2 + 1))
             if window_length >= 3:
                 section_y_smooth = savgol_filter(section_y, window_length, 2)
             else:
                 section_y_smooth = section_y
 
-            # Get peak properties
-            peak_idx = peak.peak_metrics['index'] - left_idx
-            height = np.max(section_y_smooth)
-            mean = section_x[peak_idx]
+            # Interpolate the smoothed data
+            interp_func = interp1d(section_x, section_y_smooth, kind='cubic', bounds_error=False, fill_value=0)
+            y_interp = interp_func(x_interp)
 
-            # Improved width estimation focusing on peak shape
-            peak_mask = section_y_smooth > (height * 0.1)
+            # Get peak properties from interpolated data
+            peak_idx = np.argmax(y_interp)
+            height = np.max(y_interp)
+            mean = x_interp[peak_idx]
+
+            # Width estimation using interpolated data
+            peak_mask = y_interp > (height * 0.1)
             peak_indices = np.where(peak_mask)[0]
             if len(peak_indices) >= 2:
-                width = (section_x[peak_indices[-1]] - section_x[peak_indices[0]]) / 4
+                width = (x_interp[peak_indices[-1]] - x_interp[peak_indices[0]]) / 4
             else:
                 width = (x[right_idx] - x[left_idx]) / 6
 
             # Initial parameters with adjusted bounds
             p0 = [height, mean, width]
             bounds = (
-                [height * 0.7, section_x[0], width * 0.3],
-                [height * 1.3, section_x[-1], width * 2.0]
+                [height * 0.7, x_interp[0], width * 0.3],
+                [height * 1.3, x_interp[-1], width * 2.0]
             )
 
-            # Create weights emphasizing the peak region and de-emphasizing noise
-            weights = np.ones_like(section_y)
-            peak_region = (section_x > mean - width * 2) & (section_x < mean + width * 2)
+            # Create weights for interpolated data
+            weights = np.ones_like(x_interp)
+            peak_region = (x_interp > mean - width * 2) & (x_interp < mean + width * 2)
             weights[peak_region] = 3.0
-            weights[section_y < height * 0.1] = 0.5
+            weights[y_interp < height * 0.1] = 0.5
 
-            # Perform the fit
+            # Fit using interpolated data
             popt, _ = curve_fit(
-                gaussian_curve,  # Using imported gaussian_curve
-                section_x,
-                section_y_smooth,
+                gaussian_curve,
+                x_interp,
+                y_interp,
                 p0=p0,
                 bounds=bounds,
                 sigma=1/weights,
@@ -137,10 +145,10 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                 method='trf'
             )
 
-            # Generate the full curve
-            fitted_curve = self._generate_approximation_curve(x, section_x, popt, left_idx, right_idx)
+            # Generate the full curve with interpolation
+            fitted_curve = self._generate_interpolated_curve(x, x_interp, popt, left_idx, right_idx)
 
-            # Calculate residuals using original data
+            # Calculate residuals using original data points
             section_fit = gaussian_curve(section_x, *popt)
             residuals = np.sum((section_y - section_fit)**2)
             normalized_residuals = residuals / (height * len(section_y))
@@ -161,27 +169,36 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
         return peak
 
-    def _generate_approximation_curve(self, x, section_x, popt, left_idx, right_idx):
-        """Generate the complete fitted curve ensuring smooth decay to zero"""
-        curve = np.zeros_like(x)
+    def _generate_interpolated_curve(self, x, x_interp, popt, left_idx, right_idx):
+        """Generate smooth curve using interpolation and proper decay to zero"""
+        # Generate high-resolution curve for the entire x range
+        x_full_interp = np.linspace(x[0], x[-1], len(x) * 10)
+        curve_full = np.zeros_like(x_full_interp)
 
-        # Generate the main fitted section
-        curve[left_idx:right_idx] = gaussian_curve(section_x, *popt)
+        # Find indices corresponding to the section boundaries in interpolated space
+        left_interp = np.searchsorted(x_full_interp, x[left_idx])
+        right_interp = np.searchsorted(x_full_interp, x[right_idx])
 
-        # Smoothly extend to zero outside the fitting region
-        if left_idx > 0:
-            left_x = x[:left_idx]
+        # Generate the main fitted section with high resolution
+        section_mask = slice(left_interp, right_interp)
+        curve_full[section_mask] = gaussian_curve(x_full_interp[section_mask], *popt)
+
+        # Apply smooth decay outside the fitting region
+        if left_interp > 0:
+            left_x = x_full_interp[:left_interp]
             left_y = gaussian_curve(left_x, *popt)
-            damping = np.exp(-(np.arange(len(left_x))[::-1]) / 3)
-            curve[:left_idx] = left_y * damping
+            damping = np.exp(-(np.arange(len(left_x))[::-1]) / (len(left_x) / 3))
+            curve_full[:left_interp] = left_y * damping
 
-        if right_idx < len(x):
-            right_x = x[right_idx:]
+        if right_interp < len(x_full_interp):
+            right_x = x_full_interp[right_interp:]
             right_y = gaussian_curve(right_x, *popt)
-            damping = np.exp(-np.arange(len(right_x)) / 3)
-            curve[right_idx:] = right_y * damping
+            damping = np.exp(-np.arange(len(right_x)) / (len(right_x) / 3))
+            curve_full[right_interp:] = right_y * damping
 
-        return curve
+        # Interpolate back to original x grid
+        interp_func = interp1d(x_full_interp, curve_full, kind='cubic', bounds_error=False, fill_value=0)
+        return interp_func(x)
 
     def _select_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
         for chrom in chromatograms:

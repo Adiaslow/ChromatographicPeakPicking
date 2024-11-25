@@ -221,9 +221,7 @@ class Peak:
 
 
     def _validate_peak_metrics(self) -> bool:
-        for key, val in self.peak_metrics:
-            if val == None or val is np.NaN:
-                continue
-            else:
-                return True
-        return False
+            for key, val in self.peak_metrics.items():
+                if val is not None and not np.isnan(val):
+                    return True
+            return False

@@ -35,6 +35,7 @@ class Peak:
         'area': np.NaN,
         'symmetry': np.NaN,
         'skewness': np.NaN,
+        'prominence': np.NaN,
         'resolution': np.NaN,
         'gaussian_residuals': None,
         'score': np.NaN,

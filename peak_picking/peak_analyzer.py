@@ -17,6 +17,7 @@ class PeakAnalyzer:
         peak = PeakAnalyzer._calculate_peak_area(x, y, peak)
         peak = PeakAnalyzer._calculate_peak_symmetry(y, peak)
         peak = PeakAnalyzer._calculate_peak_skewness(y, peak)
+        peak = PeakAnalyzer._calculate_peak_prominence(y, peak)
         peak = PeakAnalyzer._calculate_peak_resolution(x, y, peak, chromatogram.peaks)
         return peak
 
@@ -78,6 +79,11 @@ class PeakAnalyzer:
         peak.peak_metrics['resolution'] = 2 * delta_t / (peak.peak_metrics['width'] + peak_widths(y, [nearest])[0][0])
         return peak
 
+
+    @staticmethod
+    def _calculate_peak_prominence(y: np.ndarray, peak: Peak) -> Peak:
+        peak.peak_metrics['prominence'] = peak.peak_metrics['height'] - np.min([y[peak.peak_metrics['left_base_index']], y[peak.peak_metrics['right_base_index']]])
+        return peak
 
     @staticmethod
     def _calculate_peak_score(peak: Peak) -> Peak:

@@ -47,7 +47,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
     def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
         for chrom in chromatograms:
             search_peaks, properties = find_peaks(chrom.y_corrected,
-                height=self.config.height_threshold,
+                height=chrom.y.max() * self.config.search_rel_height,
                 rel_height=self.config.search_rel_height)
 
             fitted_peaks = []

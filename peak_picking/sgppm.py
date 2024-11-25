@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import numpy as np
 from scipy.optimize import curve_fit, OptimizeWarning
-from scipy.signal import find_peaks, peak_widths
+from scipy.signal import find_peaks, peak_widths, savgol_filter
 from scipy.signal.windows import tukey
 from scipy.interpolate import interp1d
 from typing import List, Optional, Tuple, Union
@@ -78,80 +78,78 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
         """
-        Fit a Gaussian curve to baseline-corrected peak data.
+        Fit a Gaussian curve to peak data with improved noise handling and peak shape estimation.
 
         Args:
             x: x-axis data
-            y: y-axis data (already baseline corrected)
+            y: y-axis data (baseline corrected)
             peak: Peak object containing initial peak metrics
-
-        Returns:
-            Peak object with updated metrics and fitted curve
         """
-        # Get fitting region
-        left_idx = int(peak.peak_metrics['left_base_index'])
-        right_idx = int(peak.peak_metrics['right_base_index'])
+        left_idx = max(0, int(peak.peak_metrics['left_base_index']) - 2)
+        right_idx = min(len(x), int(peak.peak_metrics['right_base_index']) + 2)
 
         section_x = x[left_idx:right_idx]
         section_y = y[left_idx:right_idx]
 
         try:
-            # Initial parameter estimation
-            height = peak.peak_metrics['height']
-            peak_idx = peak.peak_metrics['index']
-            mean = x[peak_idx]
+            # Smooth the section data to reduce noise impact
+            window_length = min(7, len(section_y) - (len(section_y) % 2 + 1))
+            if window_length >= 3:
+                section_y_smooth = savgol_filter(section_y, window_length, 2)
+            else:
+                section_y_smooth = section_y
 
-            # Improved width estimation using peak shape analysis
-            half_height = height / 2
-            peak_relative_idx = peak_idx - left_idx
+            # Get peak properties
+            peak_idx = peak.peak_metrics['index'] - left_idx
+            height = np.max(section_y_smooth)
+            mean = section_x[peak_idx]
 
-            # Find width using interpolation on both sides of peak
-            try:
-                left_half = np.interp(half_height,
-                                    section_y[:peak_relative_idx][::-1],
-                                    section_x[:peak_relative_idx][::-1])
-                right_half = np.interp(half_height,
-                                     section_y[peak_relative_idx:],
-                                     section_x[peak_relative_idx:])
-                width = (right_half - left_half) / 2.355  # Convert FWHM to sigma
-            except ValueError:
-                # Fallback width estimation if interpolation fails
-                width = (x[right_idx] - x[left_idx]) / 4
+            # Improved width estimation focusing on peak shape
+            peak_mask = section_y_smooth > (height * 0.1)
+            peak_indices = np.where(peak_mask)[0]
+            if len(peak_indices) >= 2:
+                width = (section_x[peak_indices[-1]] - section_x[peak_indices[0]]) / 4
+            else:
+                width = (x[right_idx] - x[left_idx]) / 6
 
-            # Initial parameters and bounds
+            # Initial parameters with adjusted bounds
             p0 = [height, mean, width]
             bounds = (
-                [height * 0.5, x[left_idx], width * 0.2],
-                [height * 1.5, x[right_idx], width * 3.0]
+                [height * 0.7, section_x[0], width * 0.3],
+                [height * 1.3, section_x[-1], width * 2.0]
             )
 
-            # Weight the fit to emphasize the peak region
-            weights = np.ones_like(section_x)
-            peak_region = (section_x > mean - width) & (section_x < mean + width)
-            weights[peak_region] = 2.0
+            # Create weights emphasizing the peak region and de-emphasizing noise
+            weights = np.ones_like(section_y)
+            peak_region = (section_x > mean - width * 2) & (section_x < mean + width * 2)
+            weights[peak_region] = 3.0
+            weights[section_y < height * 0.1] = 0.5
 
-            popt, pcov = curve_fit(
-                gaussian_curve,
+            # Perform the fit
+            popt, _ = curve_fit(
+                gaussian_curve,  # Using imported gaussian_curve
                 section_x,
-                section_y,
+                section_y_smooth,
                 p0=p0,
                 bounds=bounds,
                 sigma=1/weights,
-                maxfev=10000
+                maxfev=5000,
+                method='trf'
             )
 
-            # Generate full curve and calculate metrics
+            # Generate the full curve
             fitted_curve = self._generate_approximation_curve(x, section_x, popt, left_idx, right_idx)
-            residuals = np.sum((section_y - gaussian_curve(section_x, *popt))**2)
+
+            # Calculate residuals using original data
+            section_fit = gaussian_curve(section_x, *popt)
+            residuals = np.sum((section_y - section_fit)**2)
             normalized_residuals = residuals / (height * len(section_y))
 
-            # Update peak metrics
             peak.peak_metrics.update({
                 'gaussian_residuals': normalized_residuals,
                 'fit_amplitude': popt[0],
                 'fit_mean': popt[1],
                 'fit_stddev': popt[2],
-                'fit_r_squared': 1 - (residuals / np.sum((section_y - np.mean(section_y))**2)),
                 'approximation_curve': fitted_curve
             })
 
@@ -164,25 +162,24 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         return peak
 
     def _generate_approximation_curve(self, x, section_x, popt, left_idx, right_idx):
-        """Generate smooth approximation curve with gradual decay to zero at boundaries"""
+        """Generate the complete fitted curve ensuring smooth decay to zero"""
         curve = np.zeros_like(x)
 
-        # Generate fitted values for section
-        section_values = gaussian_curve(section_x, *popt)
+        # Generate the main fitted section
+        curve[left_idx:right_idx] = gaussian_curve(section_x, *popt)
 
-        # Apply Gaussian tails naturally beyond the fitting region
-        # This ensures smooth decay to zero
-        curve[left_idx:right_idx] = section_values
-
-        # Extend the Gaussian curve to the left if possible
+        # Smoothly extend to zero outside the fitting region
         if left_idx > 0:
             left_x = x[:left_idx]
-            curve[:left_idx] = gaussian_curve(left_x, *popt)
+            left_y = gaussian_curve(left_x, *popt)
+            damping = np.exp(-(np.arange(len(left_x))[::-1]) / 3)
+            curve[:left_idx] = left_y * damping
 
-        # Extend the Gaussian curve to the right if possible
         if right_idx < len(x):
             right_x = x[right_idx:]
-            curve[right_idx:] = gaussian_curve(right_x, *popt)
+            right_y = gaussian_curve(right_x, *popt)
+            damping = np.exp(-np.arange(len(right_x)) / 3)
+            curve[right_idx:] = right_y * damping
 
         return curve
 

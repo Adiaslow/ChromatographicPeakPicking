@@ -27,6 +27,6 @@ class SGPPMConfig(Config):
     height_threshold: float = 0.0
     stddev_threshold = 1.164
     width_min: float = 0.1
-    width_max: float = 0.2
+    width_max: float = 0.5
     symmetry_threshold: float = 0.5
     noise_factor: float = 3.0

@@ -46,32 +46,23 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
     def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
         for chrom in chromatograms:
-            noise_threshold = chrom.signal_metrics['noise_level'] * self.config.noise_factor
-            min_distance = max(1, int(len(chrom.y_corrected) * self.config.min_distance_factor))
-
             peaks, properties = find_peaks(chrom.y_corrected,
-                                       height=noise_threshold,
-                                       distance=min_distance,
-                                       prominence=(np.max(chrom.y_corrected) * 0.1))
+                                        height=self.config.height_threshold,
+                                        rel_height=self.config.rel_height)
 
             fitted_peaks = []
             for idx, peak_idx in enumerate(peaks):
-                try:
-                    peak_obj = Peak()
-                    peak_obj.peak_metrics.update({
-                        'index': peak_idx,
-                        'time': chrom.x[peak_idx],
-                        'height': chrom.y_corrected[peak_idx],
-                        'prominence': properties['prominences'][idx]
-                    })
-                    peak_obj = PeakAnalyzer.analyze_peak(peak_obj, chrom)
-                    peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
+                peak_obj = Peak()
+                peak_obj.peak_metrics.update({
+                    'index': peak_idx,
+                    'time': chrom.x[peak_idx],
+                    'height': chrom.y_corrected[peak_idx]
+                })
+                peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
+                if peak_obj.peak_metrics.get('fit_stddev', float('inf')) < self.config.stddev_threshold:
                     fitted_peaks.append(peak_obj)
-                except RuntimeError:
-                    continue
 
             chrom.peaks = fitted_peaks
-
         return chromatograms
 
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
@@ -122,30 +113,10 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         return curve
 
     def _select_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
-        for chrom in chromatograms:
-            if not chrom.peaks:
-                continue
-
-            max_height = max(peak.peak_metrics['height'] for peak in chrom.peaks)
-            max_area = max(peak.peak_metrics['area'] for peak in chrom.peaks)
-
-            for peak in chrom.peaks:
-                score = (
-                    (peak.peak_metrics['area'] / max_area) *
-                    (peak.peak_metrics['height'] / max_height) *
-                    peak.peak_metrics['prominence'] *
-                    peak.peak_metrics['symmetry'] *
-                    (1 / (1 + peak.peak_metrics['gaussian_residuals']))
-                )
-
-                relative_time = peak.peak_metrics['time'] / chrom.x[-1]
-                if relative_time < 0.3:
-                    score *= (relative_time / 0.3) ** 4
-
-                peak.peak_metrics['score'] = score
-
-            best_peak = max(chrom.peaks, key=lambda p: p.peak_metrics['score'])
-            if self._validate_peak_metrics(best_peak, chrom):
-                chrom.picked_peak = best_peak
-
-        return chromatograms
+            for chrom in chromatograms:
+                if chrom.peaks:
+                    # Select peak with highest amplitude
+                    best_peak = max(chrom.peaks,
+                                  key=lambda p: p.peak_metrics.get('fit_amplitude', 0))
+                    chrom.picked_peak = best_peak
+            return chromatograms

@@ -33,8 +33,6 @@ def test_sgppm_single_compound():
         intensities_array = intensities
         building_blocks = test_data[test]['building_blocks']
 
-        print(f"Building Blocks: {building_blocks}")
-
         building_blocks = [
             BuildingBlock(name=building_blocks[0]),
             BuildingBlock(name=building_blocks[1]),

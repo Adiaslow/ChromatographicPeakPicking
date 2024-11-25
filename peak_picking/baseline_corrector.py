@@ -93,6 +93,6 @@ class BaselineCorrector:
         y_corrected /= np.max(y_corrected)
 
         non_zero_mask = y_diff != 0
-        y_corrected[non_zero_mask] = y_diff[non_zero_mask]
+        y_corrected[non_zero_mask] = y[non_zero_mask]
 
         return y_corrected

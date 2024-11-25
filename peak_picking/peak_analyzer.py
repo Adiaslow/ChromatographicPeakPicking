@@ -96,7 +96,7 @@ class PeakAnalyzer:
 
             # Add time penalty directly in score calculation
             relative_time = peak.peak_metrics['time'] / 60  # Assuming time is in minutes
-            time_weight = (relative_time / 0.3) ** 4 if relative_time < 0.3 else 1.0
+            time_weight = (relative_time / 0.3) ** 6 if relative_time < 0.3 else 1.0
 
             peak.peak_metrics['score'] = (np.mean(metrics) *
                                         peak.peak_metrics['prominence'] *

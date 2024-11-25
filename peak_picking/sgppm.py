@@ -153,23 +153,21 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         return fitting_gaussians
 
     def _select_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
-        """Select peaks in chromatograms
-
-        Args:
-            chromatograms (List[Chromatogram]): chromatograms to be analyzed
-
-        Returns:
-            List[Chromatogram]: chromatograms with peaks selected
-
-        Raises:
-            ValueError: if height thresholds are negative
-        """
-        if self.config.height_threshold < 0 or self.config.pick_rel_height < 0:
-            raise ValueError("Height thresholds must be non-negative")
-
         for chrom in chromatograms:
             if not chrom.peaks:
                 continue
+
+            total_time = chrom.x[-1]
+            for peak in chrom.peaks:
+                relative_time = peak.peak_metrics['time'] / total_time
+
+                # Only penalize final ~20% of gradient where dimers are likely
+                if relative_time > 0.8:
+                    time_weight = np.exp(-(relative_time - 0.8) / 0.1)
+                else:
+                    time_weight = 1.0
+
+                peak.peak_metrics['score'] *= time_weight
 
             best_peak = max(chrom.peaks, key=lambda p: p.peak_metrics['score'])
             if self._validate_peak_metrics(best_peak, chrom):

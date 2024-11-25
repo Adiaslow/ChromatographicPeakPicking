@@ -21,7 +21,7 @@ class SGPPMConfig(Config):
     correction_method = "SWM"
     window_length = 5
     fit_points = 100
-    search_rel_height = 0.01
+    search_rel_height = 0.001
     pick_rel_height = 0.4
     gaussian_residuals_threshold = 6000.0
     height_threshold = 5.0

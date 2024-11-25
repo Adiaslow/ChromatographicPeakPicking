@@ -93,9 +93,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                                    peak.peak_metrics['width']])
 
             peak.peak_metrics['gaussian_residuals'] = np.sum((section_y - gaussian_curve(section_x, *popt))**2)
-            curve = gaussian_curve(x, *popt)  # Use full x range
-            # trim to the peak region
-            peak.peak_metrics['approximation_curve'] = curve[peak.peak_metrics['left_base_index']:peak.peak_metrics['right_base_index']+1]
+            peak.peak_metrics['approximation_curve'] = gaussian_curve(x, *popt)  # Use full x range
         except RuntimeError:
             peak.peak_metrics['gaussian_residuals'] = float('inf')
 

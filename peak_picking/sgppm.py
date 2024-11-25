@@ -169,7 +169,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
         return chromatograms
 
-    def _validate_peak_metrics(self, peak: Peak, chromatogram: Chromatogram, debug: bool = False) -> bool:
+    def _validate_peak_metrics(self, peak: Peak, chromatogram: Chromatogram, debug: bool = True) -> bool:
         def debug_print(msg: str):
             if debug:
                 print(f"Peak at {peak.peak_metrics['time']:.2f} min failed: {msg}")

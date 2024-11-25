@@ -85,15 +85,22 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             y: y-axis data (baseline corrected)
             peak: Peak object containing initial peak metrics
         """
-        left_idx = max(0, int(peak.peak_metrics['left_base_index']) - 2)
-        right_idx = min(len(x), int(peak.peak_metrics['right_base_index']) + 2)
+        left_idx = max(0, int(peak.peak_metrics['left_base_index']))
+        right_idx = min(len(x) - 1, int(peak.peak_metrics['right_base_index']))
 
-        section_x = x[left_idx:right_idx]
-        section_y = y[left_idx:right_idx]
+        section_x = x[left_idx:right_idx + 1]
+        section_y = y[left_idx:right_idx + 1]
+
+        if len(section_x) < 3:  # Need at least 3 points for fitting
+            peak.peak_metrics.update({
+                'gaussian_residuals': float('inf'),
+                'fit_error': 'Not enough points for fitting'
+            })
+            return peak
 
         try:
             # Create higher resolution x-values for interpolation
-            interp_factor = 10  # Number of points between each original point
+            interp_factor = 10
             x_interp = np.linspace(section_x[0], section_x[-1], len(section_x) * interp_factor)
 
             # Smooth the section data
@@ -118,7 +125,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             if len(peak_indices) >= 2:
                 width = (x_interp[peak_indices[-1]] - x_interp[peak_indices[0]]) / 4
             else:
-                width = (x[right_idx] - x[left_idx]) / 6
+                width = (section_x[-1] - section_x[0]) / 6
 
             # Initial parameters with adjusted bounds
             p0 = [height, mean, width]
@@ -145,8 +152,27 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                 method='trf'
             )
 
-            # Generate the full curve with interpolation
-            fitted_curve = self._generate_interpolated_curve(x, x_interp, popt, left_idx, right_idx)
+            # Generate the full curve
+            fitted_curve = np.zeros_like(x)
+
+            # Calculate the high-resolution curve
+            x_high_res = np.linspace(x[0], x[-1], len(x) * interp_factor)
+            curve_high_res = gaussian_curve(x_high_res, *popt)
+
+            # Apply damping at edges if needed
+            if left_idx > 0:
+                left_mask = x_high_res < x[left_idx]
+                damping = np.exp(-(x[left_idx] - x_high_res[left_mask]) / width)
+                curve_high_res[left_mask] *= damping
+
+            if right_idx < len(x) - 1:
+                right_mask = x_high_res > x[right_idx]
+                damping = np.exp(-(x_high_res[right_mask] - x[right_idx]) / width)
+                curve_high_res[right_mask] *= damping
+
+            # Interpolate back to original grid
+            interp_func = interp1d(x_high_res, curve_high_res, kind='cubic', bounds_error=False, fill_value=0)
+            fitted_curve = interp_func(x)
 
             # Calculate residuals using original data points
             section_fit = gaussian_curve(section_x, *popt)

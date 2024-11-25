@@ -24,7 +24,7 @@ class SGPPMConfig(Config):
     search_rel_height = 0.1
     pick_rel_height = 0.3
     gaussian_residuals_threshold = 6000.0
-    height_threshold = 5.0
+    height_threshold = 10.0
     stddev_threshold = 1.5
     width_min = 0.02
     width_max = 0.2

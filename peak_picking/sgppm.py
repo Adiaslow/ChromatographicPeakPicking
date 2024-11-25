@@ -75,7 +75,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             chrom.peaks = fitted_peaks
         return chromatograms
 
-    def fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
+    def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
         # Get peak boundaries instead of fixed window
         left_idx = peak.peak_metrics['left_boundary']
         right_idx = peak.peak_metrics['right_boundary']

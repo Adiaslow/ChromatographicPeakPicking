@@ -93,6 +93,7 @@ class PeakAnalyzer:
             min(peak.peak_metrics['resolution'] / 2, 1),
             1 - abs(peak.peak_metrics['skewness']) / 2
         ]
+
         peak.peak_metrics['score'] = (np.mean(metrics) *
                                             peak.peak_metrics['height'] *
                                             peak.peak_metrics['area'] / peak.peak_metrics['height'])  # Normalizes area

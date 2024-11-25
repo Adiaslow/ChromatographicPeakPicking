@@ -70,15 +70,15 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
     def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
         for chrom in chromatograms:
-            noise_threshold = chrom.signal_metrics['noise_level'] * 2  # Reduced from 3
-            min_distance = max(1, int(len(chrom.y_corrected) * 0.005))  # Reduced from 0.01
+            noise_threshold = chrom.signal_metrics['noise_level'] * self.config.noise_factor
+            min_distance = max(1, int(len(chrom.y_corrected) * self.config.min_distance_factor))
             peaks, properties = find_peaks(chrom.y_corrected,
                                        height=noise_threshold,
                                        distance=min_distance)
 
             fitted_peaks = self._fit_gaussians(chrom, peaks, properties)
             chrom.peaks = [peak for peak in fitted_peaks
-                         if peak.peak_metrics['gaussian_residuals'] <= 10.0]  # Increased from 1.0
+                         if peak.peak_metrics['gaussian_residuals'] <= self.config.gaussian_residuals_threshold]
 
             if chrom.peaks:
                 print(f"Peak heights: {[p.peak_metrics['height'] for p in chrom.peaks]}")

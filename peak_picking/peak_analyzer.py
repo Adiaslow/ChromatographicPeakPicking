@@ -95,6 +95,6 @@ class PeakAnalyzer:
         ]
         # Emphasize prominence and scale by area
         peak.peak_metrics['score'] = (np.mean(metrics) *
-                                    peak.peak_metrics['prominence'] *  # Use prominence instead of height
-                                    peak.peak_metrics['area'])  # Area captures overall peak significance
+                                    peak.peak_metrics['prominence'] *
+                                    peak.peak_metrics['area']) * 0.1
         return peak

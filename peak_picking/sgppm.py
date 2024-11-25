@@ -173,7 +173,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                 # Apply strong time penalty for early peaks
                 relative_time = peak.peak_metrics['time'] / chrom.x[-1]
                 if relative_time < 0.3:
-                    combined_score *= (relative_time / 0.3) ** 6
+                    combined_score *= (relative_time / 0.3) ** 4  # Stronger penalty
 
                 peak.peak_metrics['score'] = combined_score
 

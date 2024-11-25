@@ -169,7 +169,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
         return chromatograms
 
-    def _validate_peak_metrics(self, peak: Peak, chromatogram: Chromatogram, debug: bool = True) -> bool:
+    def _validate_peak_metrics(self, peak: Peak, chromatogram: Chromatogram, debug: bool = False) -> bool:
         def debug_print(msg: str):
             if debug:
                 print(f"Peak at {peak.peak_metrics['time']:.2f} min failed: {msg}")
@@ -182,11 +182,10 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             debug_print(f"height ({peak.peak_metrics['height']}) < noise threshold ({chromatogram.signal_metrics['noise_level'] * self.config.noise_factor})")
             return False
 
-        total_points = len(chromatogram.x)
-        min_width = total_points * self.config.width_min
-        max_width = total_points * self.config.width_max
-        if not (min_width <= peak.peak_metrics['width'] <= max_width):
-            debug_print(f"width ({peak.peak_metrics['width']}) outside range [{min_width:.1f}, {max_width:.1f}]")
+        # Convert width from minutes to relative scale
+        peak_width_relative = peak.peak_metrics['width'] / (chromatogram.x[-1] - chromatogram.x[0])
+        if not (self.config.width_min <= peak_width_relative <= self.config.width_max):
+            debug_print(f"relative width ({peak_width_relative:.3f}) outside range [{self.config.width_min}, {self.config.width_max}]")
             return False
 
         if peak.peak_metrics['gaussian_residuals'] > self.config.gaussian_residuals_threshold:

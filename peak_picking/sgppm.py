@@ -46,9 +46,30 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
     def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
         for chrom in chromatograms:
-            search_peaks, properties = find_peaks(chrom.y_corrected,
-                height=self.config.height_threshold,
-                rel_height=self.config.search_rel_height)
+            # Calculate minimum peak distance based on min_distance_factor
+            min_distance = int(len(chrom.x) * self.config.min_distance_factor)
+
+            # Calculate height threshold based on noise level
+            noise_level = np.std(chrom.y_corrected[:100])  # Use first 100 points to estimate noise
+            dynamic_height_threshold = max(
+                self.config.height_threshold,
+                noise_level * self.config.noise_factor
+            )
+
+            # Calculate width constraints in data points
+            sampling_rate = (chrom.x[-1] - chrom.x[0]) / len(chrom.x)
+            width_min_points = int(self.config.width_min / sampling_rate)
+            width_max_points = int(self.config.width_max / sampling_rate)
+
+            # Find peaks with stricter initial criteria
+            search_peaks, properties = find_peaks(
+                chrom.y_corrected,
+                height=dynamic_height_threshold,
+                distance=min_distance,  # Minimum distance between peaks
+                width=(width_min_points, width_max_points),  # Width constraints
+                rel_height=self.config.search_rel_height,
+                prominence=(dynamic_height_threshold * 0.5, None)  # Minimum prominence
+            )
 
             fitted_peaks = []
             for idx, peak_idx in enumerate(search_peaks):
@@ -56,6 +77,10 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                 width_points = peak_widths(chrom.y_corrected, [peak_idx], rel_height=0.5)
                 left_idx = int(width_points[2][0])
                 right_idx = int(width_points[3][0])
+
+                # Skip peaks that are too close to the edges
+                if left_idx < 0 or right_idx >= len(chrom.x):
+                    continue
 
                 peak_obj.peak_metrics.update({
                     'index': peak_idx,
@@ -68,10 +93,14 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                     'width': chrom.x[right_idx] - chrom.x[left_idx]
                 })
 
-                peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
-                if peak_obj.peak_metrics.get('fit_stddev', float('inf')) < self.config.stddev_threshold:
-                    fitted_peaks.append(peak_obj)
-                peak_obj = PeakAnalyzer.analyze_peak(peak_obj, chrom)
+                # Only fit peaks that meet initial criteria
+                if (peak_obj.peak_metrics['width'] >= self.config.width_min and
+                    peak_obj.peak_metrics['width'] <= self.config.width_max):
+
+                    peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
+                    if peak_obj.peak_metrics.get('fit_stddev', float('inf')) < self.config.stddev_threshold:
+                        fitted_peaks.append(peak_obj)
+                    peak_obj = PeakAnalyzer.analyze_peak(peak_obj, chrom)
 
             chrom.peaks = fitted_peaks
         return chromatograms

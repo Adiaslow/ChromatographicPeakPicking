@@ -72,28 +72,58 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         for chrom in chromatograms:
             noise_threshold = chrom.signal_metrics['noise_level'] * self.config.noise_factor
             min_distance = max(1, int(len(chrom.y_corrected) * self.config.min_distance_factor))
+
             peaks, properties = find_peaks(chrom.y_corrected,
                                        height=noise_threshold,
-                                       distance=min_distance)
+                                       distance=min_distance,
+                                       prominence=noise_threshold * 0.5)
 
             fitted_peaks = self._fit_gaussians(chrom, peaks, properties)
-            chrom.peaks = [peak for peak in fitted_peaks
-                         if peak.peak_metrics['gaussian_residuals'] <= self.config.gaussian_residuals_threshold]
+            chrom.peaks = fitted_peaks
 
         return chromatograms
 
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
-        section_x = x[peak.peak_metrics['left_base_index']:peak.peak_metrics['right_base_index']+1]
-        section_y = y[peak.peak_metrics['left_base_index']:peak.peak_metrics['right_base_index']+1]
+        left_idx = peak.peak_metrics['left_base_index']
+        right_idx = peak.peak_metrics['right_base_index']
+        fit_width = (right_idx - left_idx) // 2
+
+        # Use wider fitting window like old code
+        fit_indices = (x >= (x[peak.peak_metrics['index']] - fit_width)) & \
+                     (x <= (x[peak.peak_metrics['index']] + fit_width))
+        section_x = x[fit_indices]
+        section_y = y[fit_indices]
 
         try:
-            popt, _ = curve_fit(gaussian_curve, section_x, section_y,
-                               p0=[peak.peak_metrics['height'],
-                                   x[peak.peak_metrics['index']],
-                                   peak.peak_metrics['width']])
+            # Better initial guesses like old code
+            amplitude_bounds = (0, peak.peak_metrics['height'] * 1.5)
+            mean_bounds = (x[peak.peak_metrics['index']] - fit_width,
+                          x[peak.peak_metrics['index']] + fit_width)
+            stddev_bounds = (1e-6, fit_width)
 
+            bounds = ([amplitude_bounds[0], mean_bounds[0], stddev_bounds[0]],
+                     [amplitude_bounds[1], mean_bounds[1], stddev_bounds[1]])
+
+            popt, _ = curve_fit(gaussian_curve,
+                              section_x,
+                              section_y,
+                              p0=[peak.peak_metrics['height'],
+                                  x[peak.peak_metrics['index']],
+                                  peak.peak_metrics['width'] * 0.5],
+                              bounds=bounds,
+                              maxfev=3000)  # Increased max iterations
+
+            # Calculate residuals for peak section
             peak.peak_metrics['gaussian_residuals'] = np.sum((section_y - gaussian_curve(section_x, *popt))**2)
-            peak.peak_metrics['approximation_curve'] = gaussian_curve(x, *popt)  # Use full x range
+
+            # Store fit parameters
+            peak.peak_metrics['fit_amplitude'] = popt[0]
+            peak.peak_metrics['fit_mean'] = popt[1]
+            peak.peak_metrics['fit_stddev'] = popt[2]
+
+            peak.peak_metrics['approximation_curve'] = np.zeros_like(x)
+            peak.peak_metrics['approximation_curve'][fit_indices] = gaussian_curve(section_x, *popt)
+
         except RuntimeError:
             peak.peak_metrics['gaussian_residuals'] = float('inf')
 
@@ -142,20 +172,26 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         return chromatograms
 
     def _validate_peak_metrics(self, peak: Peak, chromatogram: Chromatogram) -> bool:
-       """Validate peak metrics before selection"""
-       if peak.peak_metrics['score'] <= 0:
-           return False
+        if peak.peak_metrics['score'] <= 0:
+            return False
 
-       if peak.peak_metrics['gaussian_residuals'] > self.config.gaussian_residuals_threshold:
-           return False
+        # Height validation relative to noise
+        if peak.peak_metrics['height'] < chromatogram.signal_metrics['noise_level'] * self.config.noise_factor:
+            return False
 
-       if peak.peak_metrics['height'] < chromatogram.signal_metrics['noise_level'] * self.config.noise_factor:
-           return False
+        # Width validation
+        total_points = len(chromatogram.x)
+        min_width = total_points * self.config.width_min
+        max_width = total_points * self.config.width_max
+        if not (min_width <= peak.peak_metrics['width'] <= max_width):
+            return False
 
-       if not (self.config.width_min <= peak.peak_metrics['width'] <= len(chromatogram.x) * self.config.width_max):
-           return False
+        # Gaussian fit quality
+        if peak.peak_metrics['gaussian_residuals'] > self.config.gaussian_residuals_threshold:
+            return False
 
-       if peak.peak_metrics['symmetry'] < self.config.symmetry_threshold:
-           return False
+        # Symmetry check
+        if peak.peak_metrics['symmetry'] < self.config.symmetry_threshold:
+            return False
 
-       return True
+        return True

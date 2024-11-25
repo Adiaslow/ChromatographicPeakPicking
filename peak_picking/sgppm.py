@@ -77,52 +77,110 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         return chromatograms
 
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
-        left_idx = int(peak.peak_metrics['left_base_index'])
-        right_idx = int(peak.peak_metrics['right_base_index'])
+        """
+        Fit a Gaussian curve to peak data with improved boundary handling and baseline correction.
+
+        Args:
+            x: x-axis data
+            y: y-axis data
+            peak: Peak object containing initial peak metrics
+
+        Returns:
+            Peak object with updated metrics and fitted curve
+        """
+        # Extend fitting region slightly beyond base indices for better boundary behavior
+        left_idx = max(0, int(peak.peak_metrics['left_base_index']) - 5)
+        right_idx = min(len(x), int(peak.peak_metrics['right_base_index']) + 5)
 
         section_x = x[left_idx:right_idx]
         section_y = y[left_idx:right_idx]
 
         try:
+            # Initial parameter estimation
             height = peak.peak_metrics['height']
             peak_idx = peak.peak_metrics['index']
             mean = x[peak_idx]
 
-            # Width estimate from peak boundaries
-            width = (x[right_idx] - x[left_idx]) / 2.355
+            # Improved width estimation using peak shape analysis
+            half_height = height / 2
+            left_half = np.interp(half_height,
+                                section_y[:peak_idx-left_idx][::-1],
+                                section_x[:peak_idx-left_idx][::-1])
+            right_half = np.interp(half_height,
+                                    section_y[peak_idx-left_idx:],
+                                    section_x[peak_idx-left_idx:])
+            width = (right_half - left_half) / 2.355  # Convert FWHM to sigma
 
-            # Adjusted bounds for better fitting
-            amplitude_bounds = (height * 0.5, height * 2.0)
-            mean_bounds = (x[left_idx], x[right_idx])
-            width_bounds = (width * 0.3, width * 2.0)
+            # Estimate baseline offset using edge points
+            offset = min(section_y[0], section_y[-1])
 
-            p0 = [height, mean, width]
-            bounds = ([amplitude_bounds[0], mean_bounds[0], width_bounds[0]],
-                     [amplitude_bounds[1], mean_bounds[1], width_bounds[1]])
+            # Initial parameters and bounds
+            p0 = [height - offset, mean, width, offset]
+            bounds = (
+                [0, section_x[0], width * 0.2, min(section_y) - 0.1 * height],
+                [height * 2, section_x[-1], width * 3, max(section_y[0], section_y[-1]) + 0.1 * height]
+            )
 
-            popt, _ = curve_fit(gaussian_curve,
-                              section_x,
-                              section_y,
-                              p0=p0,
-                              bounds=bounds,
-                              maxfev=5000)
+            # Weighted fitting to emphasize peak region
+            weights = np.ones_like(section_y)
+            peak_region = (section_x > mean - width) & (section_x < mean + width)
+            weights[peak_region] = 2.0
 
+            popt, pcov = curve_fit(
+                self.gaussian_curve,
+                section_x,
+                section_y,
+                p0=p0,
+                bounds=bounds,
+                sigma=1/weights,
+                maxfev=10000
+            )
+
+            # Generate full curve and calculate metrics
+            fitted_curve = self._generate_approximation_curve(x, section_x, popt, left_idx, right_idx)
+            residuals = np.sum((section_y - self.gaussian_curve(section_x, *popt))**2)
+            normalized_residuals = residuals / (height * len(section_y))
+
+            # Update peak metrics
             peak.peak_metrics.update({
-                'gaussian_residuals': np.sum((section_y - gaussian_curve(section_x, *popt))**2) / height,
+                'gaussian_residuals': normalized_residuals,
                 'fit_amplitude': popt[0],
                 'fit_mean': popt[1],
                 'fit_stddev': popt[2],
-                'approximation_curve': self._generate_approximation_curve(x, section_x, popt, left_idx, right_idx)
+                'fit_offset': popt[3],
+                'fit_r_squared': 1 - (residuals / np.sum((section_y - np.mean(section_y))**2)),
+                'approximation_curve': fitted_curve
             })
 
-        except (RuntimeError, ValueError):
-            peak.peak_metrics['gaussian_residuals'] = float('inf')
+        except (RuntimeError, ValueError) as e:
+            peak.peak_metrics.update({
+                'gaussian_residuals': float('inf'),
+                'fit_error': str(e)
+            })
 
         return peak
 
     def _generate_approximation_curve(self, x, section_x, popt, left_idx, right_idx):
+        """Generate smooth approximation curve with zero-padding outside fitting region"""
         curve = np.zeros_like(x)
-        curve[left_idx:right_idx] = gaussian_curve(section_x, *popt)
+
+        # Generate fitted values for section
+        section_values = self.gaussian_curve(section_x, *popt)
+
+        # Smooth transition to zero at boundaries
+        transition_points = 5
+        left_transition = np.linspace(0, section_values[0], transition_points)
+        right_transition = np.linspace(section_values[-1], 0, transition_points)
+
+        # Insert main fitted section
+        curve[left_idx:right_idx] = section_values
+
+        # Apply transitions if there's room
+        if left_idx >= transition_points:
+            curve[left_idx-transition_points:left_idx] = left_transition
+        if right_idx + transition_points <= len(curve):
+            curve[right_idx:right_idx+transition_points] = right_transition
+
         return curve
 
     def _select_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:

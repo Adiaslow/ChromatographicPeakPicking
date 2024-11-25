@@ -158,21 +158,26 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                 continue
 
             total_time = chrom.x[-1]
+            max_height = max(peak.peak_metrics['height'] for peak in chrom.peaks)
+
             for peak in chrom.peaks:
                 relative_time = peak.peak_metrics['time'] / total_time
+                relative_height = peak.peak_metrics['height'] / max_height
 
-                # Penalize early and late peaks
+                # Stronger early peak penalty
                 if relative_time < 0.3:
-                    time_weight = 1 - (relative_time / 0.3) ** 2  # Strong early penalty
+                    time_weight = 0.1 + 0.9 * (relative_time / 0.3) ** 3  # Cubic penalty
                 elif relative_time > 0.8:
-                    time_weight = np.exp(-(relative_time - 0.8) / 0.1)  # Late penalty
+                    time_weight = np.exp(-(relative_time - 0.8) / 0.1)
                 else:
                     time_weight = 1.0
 
-                # Apply time penalty
-                peak.peak_metrics['score'] *= time_weight
+                # Favor larger peaks
+                height_weight = relative_height ** 2
 
-            # Select peak with highest adjusted score
+                # Combined weighting
+                peak.peak_metrics['score'] *= time_weight * height_weight
+
             best_peak = max(chrom.peaks, key=lambda p: p.peak_metrics['score'])
             if self._validate_peak_metrics(best_peak, chrom):
                 chrom.picked_peak = best_peak
@@ -192,14 +197,15 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             debug_print(f"height ({peak.peak_metrics['height']}) < noise threshold ({chromatogram.signal_metrics['noise_level'] * self.config.noise_factor})")
             return False
 
-        # Convert width from minutes to relative scale
         peak_width_relative = peak.peak_metrics['width'] / (chromatogram.x[-1] - chromatogram.x[0])
         if not (self.config.width_min <= peak_width_relative <= self.config.width_max):
             debug_print(f"relative width ({peak_width_relative:.3f}) outside range [{self.config.width_min}, {self.config.width_max}]")
             return False
 
-        if peak.peak_metrics['gaussian_residuals'] > self.config.gaussian_residuals_threshold:
-            debug_print(f"gaussian residuals ({peak.peak_metrics['gaussian_residuals']:.2f}) > threshold ({self.config.gaussian_residuals_threshold})")
+        # Scale residuals threshold with peak height
+        adjusted_residuals_threshold = self.config.gaussian_residuals_threshold * (peak.peak_metrics['height'] / chromatogram.signal_metrics['noise_level'])
+        if peak.peak_metrics['gaussian_residuals'] > adjusted_residuals_threshold:
+            debug_print(f"gaussian residuals ({peak.peak_metrics['gaussian_residuals']:.2f}) > threshold ({adjusted_residuals_threshold})")
             return False
 
         if peak.peak_metrics['symmetry'] < self.config.symmetry_threshold:

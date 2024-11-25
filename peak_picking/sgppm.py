@@ -68,7 +68,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                     'width': chrom.x[right_idx] - chrom.x[left_idx]
                 })
 
-                peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
+                peak_obj = self._fit_gaussian(chrom.x, chrom.y, peak_obj)
                 if peak_obj.peak_metrics.get('fit_stddev', float('inf')) < self.config.stddev_threshold:
                     fitted_peaks.append(peak_obj)
 

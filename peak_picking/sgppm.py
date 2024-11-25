@@ -77,8 +77,8 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
         peak_idx = peak.peak_metrics['index']
-        # Increase window size to 10% of chromatogram length
-        window = int(len(x) * 0.1)
+        # Use 5% of chromatogram length for window
+        window = int(len(x) * 0.05)
         left_idx = max(0, peak_idx - window)
         right_idx = min(len(x), peak_idx + window)
 
@@ -88,13 +88,11 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         try:
             height = peak.peak_metrics['height']
             mean = x[peak_idx]
-            # Increase width parameter
-            width = (section_x[-1] - section_x[0]) / 2.0  # Changed from 5.0 to 2.0
+            width = (section_x[-1] - section_x[0]) / 5.0
 
             amplitude_bounds = (height * 0.1, height * 2.0)
             mean_bounds = (section_x[0], section_x[-1])
-            # Allow for wider peaks
-            width_bounds = (width * 0.2, width * 2.0)  # Changed bounds
+            width_bounds = (width * 0.1, width * 5.0)
 
             p0 = [height, mean, width]
             bounds = ([amplitude_bounds[0], mean_bounds[0], width_bounds[0]],
@@ -107,13 +105,12 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                               bounds=bounds,
                               maxfev=2000)
 
-            peak.peak_metrics.update({
-                'gaussian_residuals': np.sum((section_y - gaussian_curve(section_x, *popt))**2) / height,
-                'fit_amplitude': popt[0],
-                'fit_mean': popt[1],
-                'fit_stddev': popt[2],
-                'approximation_curve': self._generate_approximation_curve(x, section_x, popt, left_idx, right_idx)
-            })
+            peak.peak_metrics['gaussian_residuals'] = np.sum((section_y - gaussian_curve(section_x, *popt))**2) / height
+            peak.peak_metrics['fit_amplitude'] = popt[0]
+            peak.peak_metrics['fit_mean'] = popt[1]
+            peak.peak_metrics['fit_stddev'] = popt[2]
+            peak.peak_metrics['approximation_curve'] = np.zeros_like(x)
+            peak.peak_metrics['approximation_curve'][left_idx:right_idx] = gaussian_curve(section_x, *popt)
 
         except (RuntimeError, ValueError):
             peak.peak_metrics['gaussian_residuals'] = float('inf')

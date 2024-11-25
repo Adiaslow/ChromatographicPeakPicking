@@ -136,7 +136,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                 peak_obj.peak_metrics['time'] = chrom.x[peak]
                 peak_obj.peak_metrics['height'] = chrom.y[peak]
                 peak_obj = PeakAnalyzer.analyze_peak(peak_obj, chrom)
-                peak_obj = self._fit_gaussian(chrom.x, chrom.y, peak_obj)
+                peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
                 fitting_gaussians.append(peak_obj)
             except RuntimeError:
                 continue

@@ -1,26 +1,15 @@
 from dataclasses import dataclass
 import numpy as np
-from typing import List, Optional, Union
+from typing import Dict
 
 @dataclass
 class Peak:
     """Peak class to store peak information
 
     Attributes:
-        time (Optional[float]): time of the peak
-        index (Optional[int]): index of the peak
-        height (Optional[float]): height of the peak
-        width (Optional[float]): width of the peak
-        left_base (Optional[float]): left base of the peak
-        right_base (Optional[float]): right base of the peak
-        area (Optional[float]): area of the peak
-        symmetry (Optional[float]): symmetry of the peak
-        skewness (Optional[float]): skewness of the peak
-        score (Optional[float]): score of the peak
-        approximation_curve (Optional[np.ndarray]): approximation curve of the peak
+        peak_metrics (Dict): dictionary to store peak metrics
 
     Methods:
-        _get_attributes(self) -> List[Union[float, int, np.ndarray, None]: Return the attributes of the peak
         __eq__(self, other) -> bool: Check if two peaks are equal with respect to time
         __ne__(self, other) -> bool: Check if two peaks are not equal with respect to time
         __lt__(self, other) -> bool: Check if one peak is less than the other with respect to time
@@ -30,49 +19,27 @@ class Peak:
         __hash__(self) -> int: Return the hash value of the peak
         __str__(self) -> str: Return the string representation of the peak
         __repr__(self) -> str: Return the string representation of the peak
+        _validate_peak_metrics(self) -> bool: Check if at least one peak metric is not None or NaN
     """
-    time: Optional[float] = np.NaN
-    index: Optional[int] = np.NaN
-    height: Optional[float] = np.NaN
-    width: Optional[float] = np.NaN
-    left_base_time: Optional[float] = np.NaN
-    right_base_time: Optional[float] = np.NaN
-    left_base_index: Optional[int] = np.NaN
-    right_base_index: Optional[int] = np.NaN
-    area: Optional[float] = np.NaN
-    symmetry: Optional[float] = np.NaN
-    skewness: Optional[float] = np.NaN
-    score: Optional[float] = np.NaN
-    approximation_curve: Optional[np.ndarray] = None
 
-
-    def _get_attributes(self) -> List[Union[float, int, np.ndarray, None]]:
-        """Return the attributes of the peak
-
-        Args:
-            None
-
-        Returns:
-            List[Union[float, int, np.ndarray, None]]: List of peak attributes
-
-        Raises:
-            None
-        """
-        return [
-            self.time,
-            self.index,
-            self.height,
-            self.width,
-            self.left_base_time,
-            self.right_base_time,
-            self.left_base_index,
-            self.right_base_index,
-            self.area,
-            self.symmetry,
-            self.skewness,
-            self.score,
-            self.approximation_curve
-        ]
+    peak_metrics: Dict = {
+        'time': np.NaN,
+        'index': np.NaN,
+        'height': np.NaN,
+        'width': np.NaN,
+        'width_5': np.NaN,
+        'left_base_time': np.NaN,
+        'right_base_time': np.NaN,
+        'left_base_index': np.NaN,
+        'right_base_index': np.NaN,
+        'area': np.NaN,
+        'symmetry': np.NaN,
+        'skewness': np.NaN,
+        'resolution': np.NaN,
+        'gaussian_residuals': None,
+        'score': np.NaN,
+        'approximation_curve': None,
+    }
 
 
     def __eq__(self, other) -> bool:
@@ -90,9 +57,9 @@ class Peak:
         """
         if not isinstance(other, Peak):
             raise ValueError("Cannot compare Peak with non-Peak object")
-        if self.time is None or other.time is None:
+        if self.peak_metrics['time'] is None or self.peak_metrics['time'] is None:
             raise ValueError("Cannot compare Peaks with None time")
-        return self.time == other.time
+        return self.peak_metrics['time'] == self.peak_metrics['time']
 
 
     def __ne__(self, other) -> bool:
@@ -125,9 +92,9 @@ class Peak:
         """
         if not isinstance(other, Peak):
             raise ValueError("Cannot compare Peak with non-Peak object")
-        if self.time is None or other.time is None:
+        if self.peak_metrics['time'] is None or self.peak_metrics['time'] is None:
             raise ValueError("Cannot compare Peaks with None time")
-        return self.time < other.time
+        return self.peak_metrics['time'] < self.peak_metrics['time']
 
 
     def __le__(self, other: object) -> bool:
@@ -145,9 +112,9 @@ class Peak:
         """
         if not isinstance(other, Peak):
             raise ValueError("Cannot compare Peak with non-Peak object")
-        if self.time is None or other.time is None:
+        if self.peak_metrics['time'] is None or self.peak_metrics['time'] is None:
             raise ValueError("Cannot compare Peaks with None time")
-        return self.time <= other.time
+        return self.peak_metrics['time'] <= self.peak_metrics['time']
 
 
     def __gt__(self, other: object) -> bool:
@@ -165,9 +132,9 @@ class Peak:
         """
         if not isinstance(other, Peak):
             raise ValueError("Cannot compare Peak with non-Peak object")
-        if self.time is None or other.time is None:
+        if self.peak_metrics['time'] is None or self.peak_metrics['time'] is None:
             raise ValueError("Cannot compare Peaks with None time")
-        return self.time > other.time
+        return self.peak_metrics['time'] > self.peak_metrics['time']
 
 
     def __ge__(self, other: object) -> bool:
@@ -185,9 +152,9 @@ class Peak:
         """
         if not isinstance(other, Peak):
             raise ValueError("Cannot compare Peak with non-Peak object")
-        if self.time is None or other.time is None:
+        if self.peak_metrics['time'] is None or self.peak_metrics['time'] is None:
             raise ValueError("Cannot compare Peaks with None time")
-        return self.time >= other.time
+        return self.peak_metrics['time'] >= self.peak_metrics['time']
 
 
     def __hash__(self) -> int:
@@ -202,21 +169,14 @@ class Peak:
         Raises:
             ValueError: If all attributes of the peak are None
         """
-        if self._get_attributes() == [None] * len(self._get_attributes()):
-            raise ValueError("Cannot hash peak with all None values")
-        return hash((
-            self.time,
-            self.index,
-            self.height,
-            self.width,
-            self.left_base_time,
-            self.right_base_time,
-            self.left_base_index,
-            self.right_base_index,
-            self.area,
-            self.symmetry,
-            self.skewness,
-            self.score))
+        # If all peak_metrics aer np.NaN or Non, raise an error
+        if not self._validate_peak_metrics():
+            raise ValueError("Cannot hash peak with all None and NaN values")
+        return hash(
+            (
+                self.peak_metrics.values()
+            )
+        )
 
 
     def __str__(self) -> str:
@@ -231,21 +191,17 @@ class Peak:
         Raises:
             ValueError: If all attributes of the peak are None
         """
-        if self._get_attributes() == [None] * len(self._get_attributes()):
-            raise ValueError("Cannot hash peak with all None values")
+        if not self._validate_peak_metrics():
+            raise ValueError("Cannot print peak with all None and NaN values")
 
-        return f"Peak with time {self.time}, " + \
-        f"index {self.index}, " + \
-        f"height {self.height}, " + \
-        f"width {self.width}, " + \
-        f"left_base_time {self.left_base_time}, " + \
-        f"right_base_time {self.right_base_time}, " + \
-        f"left_base_index {self.left_base_index}, " + \
-        f"right_base_index {self.right_base_index}, " + \
-        f"area {self.area}, " + \
-        f"symmetry {self.symmetry}, " + \
-        f"skewness {self.skewness}, " + \
-        f"score {self.score}, "
+        _str = "Peak with "
+        for key, value in self.peak_metrics.items():
+            if key == 'approximation_curve':
+                continue
+            _temp_str = f"{key}: {value}, "
+            _str += _temp_str
+
+        return _str
 
 
     def __repr__(self) -> str:
@@ -261,3 +217,12 @@ class Peak:
             None
         """
         return self.__str__()
+
+
+    def _validate_peak_metrics(self) -> bool:
+        for key, val in self.peak_metrics:
+            if val == None or val is np.NaN:
+                continue
+            else:
+                return True
+        return False

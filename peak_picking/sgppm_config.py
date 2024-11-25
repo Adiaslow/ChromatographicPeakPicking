@@ -25,3 +25,4 @@ class SGPPMConfig(Config):
     fit_points = 100
     search_rel_height = 0.001
     pick_rel_height = 0.3
+    gaussian_residuals_threshold = 0.1

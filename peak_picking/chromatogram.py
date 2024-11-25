@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import numpy as np
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from .peak import Peak
 from .building_block import BuildingBlock
@@ -36,6 +36,12 @@ class Chromatogram:
     peaks: List[Peak] = field(default_factory=list)
     picked_peak: Optional[Peak] = None
     building_blocks: Optional[List[BuildingBlock]] = None
+    signal_metrics: Dict = {
+        'noise': np.NaN,
+        'signal_to_noise': np.NaN,
+        'baseline_mean': np.NaN,
+        'baseline_drift': np.NaN,
+    }
 
 
     def _validate_chromatograms(self, other) -> bool:

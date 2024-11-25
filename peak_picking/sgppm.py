@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, OptimizeWarning
 from scipy.signal import find_peaks, peak_widths
 from scipy.signal.windows import tukey
 from scipy.interpolate import interp1d
@@ -14,6 +14,9 @@ from .peak import Peak
 from .peak_analyzer import PeakAnalyzer
 from .peak_picker import PeakPicker
 from .sgppm_config import SGPPMConfig
+
+import warnings
+warnings.filterwarnings('ignore', category=OptimizeWarning)
 
 @dataclass
 class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
@@ -86,12 +89,23 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
         section_x = x[peak.peak_metrics['left_base_index']:peak.peak_metrics['right_base_index']+1]
         section_y = y[peak.peak_metrics['left_base_index']:peak.peak_metrics['right_base_index']+1]
+
+        # Initial parameter estimates
+        height = peak.peak_metrics['height']
+        center = x[peak.peak_metrics['index']]
+        width = peak.peak_metrics['width']
+
         try:
-            popt, _ = curve_fit(gaussian_curve, section_x, section_y)
-            peak.peak_metrics['gaussian_residuals'] = np.sum((section_y - gaussian_curve(section_x, *popt))**2)
+            popt, _ = curve_fit(gaussian_curve, section_x, section_y,
+                               p0=[height, center, width],
+                               bounds=([0, min(section_x), 0],
+                                     [height*2, max(section_x), width*5]))
+
+            peak.peak_metrics['gaussian_residuals'] = np.sum((section_y - gaussian_curve(section_x, *popt))**2) / height
             peak.peak_metrics['approximation_curve'] = gaussian_curve(section_x, *popt)
-        except RuntimeError:
+        except (RuntimeError, OptimizeWarning):
             peak.peak_metrics['gaussian_residuals'] = float('inf')
+
         return peak
 
     def _fit_gaussians(self, chrom: Chromatogram, peaks: np.ndarray, properties: dict) -> List[Peak]:

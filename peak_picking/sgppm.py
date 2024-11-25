@@ -77,7 +77,8 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
         peak_idx = peak.peak_metrics['index']
-        window = int(len(x) * 0.02)
+        # Increase window size to 10% of chromatogram length
+        window = int(len(x) * 0.1)
         left_idx = max(0, peak_idx - window)
         right_idx = min(len(x), peak_idx + window)
 
@@ -87,11 +88,13 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         try:
             height = peak.peak_metrics['height']
             mean = x[peak_idx]
-            width = (section_x[-1] - section_x[0]) / 5.0
+            # Increase width parameter
+            width = (section_x[-1] - section_x[0]) / 2.0  # Changed from 5.0 to 2.0
 
             amplitude_bounds = (height * 0.1, height * 2.0)
             mean_bounds = (section_x[0], section_x[-1])
-            width_bounds = (width * 0.1, width * 5.0)
+            # Allow for wider peaks
+            width_bounds = (width * 0.2, width * 2.0)  # Changed bounds
 
             p0 = [height, mean, width]
             bounds = ([amplitude_bounds[0], mean_bounds[0], width_bounds[0]],

@@ -26,8 +26,8 @@ class SGPPMConfig(Config):
     gaussian_residuals_threshold = 3.0  # More lenient fit requirements
     height_threshold = 5.0  # Lowered minimum height
     stddev_threshold = 1.5  # Slightly more lenient
-    width_min = 0.15  # More flexible width range
-    width_max = 1.2
+    width_min = 0.02  # More flexible width range
+    width_max = 0.2
     min_distance_factor = 0.03  # Allow closer peaks
     symmetry_threshold = 0.25  # More lenient symmetry
     noise_factor = 3.0  # Reduced noise threshold

@@ -46,18 +46,29 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
     def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
         for chrom in chromatograms:
-            search_peaks, _ = find_peaks(chrom.y_corrected,
-                                        height=self.config.height_threshold,
-                                        rel_height=self.config.search_rel_height)
+            search_peaks, properties = find_peaks(chrom.y_corrected,
+                                                height=self.config.height_threshold,
+                                                rel_height=self.config.search_rel_height)
 
             fitted_peaks = []
-            for peak_idx in search_peaks:
+            for idx, peak_idx in enumerate(peaks):
                 peak_obj = Peak()
+                # Calculate peak boundaries
+                width_points = peak_widths(chrom.y_corrected, [peak_idx], rel_height=0.5)
+                left_idx = int(width_points[2][0])
+                right_idx = int(width_points[3][0])
+
                 peak_obj.peak_metrics.update({
                     'index': peak_idx,
                     'time': chrom.x[peak_idx],
-                    'height': chrom.y_corrected[peak_idx]
+                    'height': chrom.y_corrected[peak_idx],
+                    'left_base_index': left_idx,
+                    'right_base_index': right_idx,
+                    'left_base_time': chrom.x[left_idx],
+                    'right_base_time': chrom.x[right_idx],
+                    'width': chrom.x[right_idx] - chrom.x[left_idx]
                 })
+
                 peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
                 if peak_obj.peak_metrics.get('fit_stddev', float('inf')) < self.config.stddev_threshold:
                     fitted_peaks.append(peak_obj)

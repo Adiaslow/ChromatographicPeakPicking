@@ -71,6 +71,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                 peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
                 if peak_obj.peak_metrics.get('fit_stddev', float('inf')) < self.config.stddev_threshold:
                     fitted_peaks.append(peak_obj)
+                peak_obj = PeakAnalyzer.analyze_peak(peak_obj, chrom)
 
             chrom.peaks = fitted_peaks
         return chromatograms

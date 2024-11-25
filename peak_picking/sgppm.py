@@ -127,15 +127,17 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             if not chrom.peaks:
                 continue
 
-            pick_peaks = []
-            for peak in chrom.peaks:
-                # Using pick_rel_height for final selection
-                if peak.peak_metrics['height'] > (max(chrom.y_corrected) * self.config.pick_rel_height):
-                    pick_peaks.append(peak)
+            max_y = np.max(chrom.y_corrected)
+            valid_peaks = []
 
-            if pick_peaks:
-                # Select peak with highest fitted amplitude
-                best_peak = max(pick_peaks, key=lambda p: p.peak_metrics.get('fit_amplitude', 0))
+            for peak in chrom.peaks:
+                peak_height = peak.peak_metrics['height']
+                if (peak_height >= self.config.height_threshold and
+                    peak_height >= max_y * self.config.pick_rel_height):
+                    valid_peaks.append(peak)
+
+            if valid_peaks:
+                best_peak = max(valid_peaks, key=lambda p: p.peak_metrics['time'])
                 chrom.picked_peak = best_peak
 
         return chromatograms

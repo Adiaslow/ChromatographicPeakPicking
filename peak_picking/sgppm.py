@@ -103,7 +103,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                               section_y,
                               p0=p0,
                               bounds=bounds,
-                              maxfev=2000)
+                              maxfev=3000)
 
             peak.peak_metrics['gaussian_residuals'] = np.sum((section_y - gaussian_curve(section_x, *popt))**2) / height
             peak.peak_metrics['fit_amplitude'] = popt[0]

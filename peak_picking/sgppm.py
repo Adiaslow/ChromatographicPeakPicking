@@ -80,10 +80,6 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             chrom.peaks = [peak for peak in fitted_peaks
                          if peak.peak_metrics['gaussian_residuals'] <= self.config.gaussian_residuals_threshold]
 
-            if chrom.peaks:
-                print(f"Peak heights: {[p.peak_metrics['height'] for p in chrom.peaks]}")
-                print(f"Peak residuals: {[p.peak_metrics['gaussian_residuals'] for p in chrom.peaks]}")
-
         return chromatograms
 
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
@@ -97,7 +93,9 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                                    peak.peak_metrics['width']])
 
             peak.peak_metrics['gaussian_residuals'] = np.sum((section_y - gaussian_curve(section_x, *popt))**2)
-            peak.peak_metrics['approximation_curve'] = gaussian_curve(x, *popt)  # Use full x range
+            curve = gaussian_curve(x, *popt)  # Use full x range
+            # trim to the peak region
+            peak.peak_metrics['approximation_curve'] = curve[peak.peak_metrics['left_base_index']:peak.peak_metrics['right_base_index']+1]
         except RuntimeError:
             peak.peak_metrics['gaussian_residuals'] = float('inf')
 

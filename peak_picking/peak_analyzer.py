@@ -19,6 +19,7 @@ class PeakAnalyzer:
         peak = PeakAnalyzer._calculate_peak_skewness(y, peak)
         peak = PeakAnalyzer._calculate_peak_prominence(y, peak)
         peak = PeakAnalyzer._calculate_peak_resolution(x, y, peak, chromatogram.peaks)
+        peak = PeakAnalyzer._calculate_peak_score(peak)
         return peak
 
     @staticmethod

@@ -199,7 +199,7 @@ class Peak:
         for key, value in self.peak_metrics.items():
             if key == 'approximation_curve':
                 continue
-            _temp_str = f"{key}: {value}, "
+            _temp_str = f"    {key}: {value},\n"
             _str += _temp_str
 
         return _str

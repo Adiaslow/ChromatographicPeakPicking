@@ -195,7 +195,7 @@ class Peak:
         if not self._validate_peak_metrics():
             raise ValueError("Cannot print peak with all None and NaN values")
 
-        _str = "Peak with "
+        _str = "Peak with\n"
         for key, value in self.peak_metrics.items():
             if key == 'approximation_curve':
                 continue

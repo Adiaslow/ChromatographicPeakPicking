@@ -73,31 +73,33 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             noise_threshold = chrom.signal_metrics['noise_level'] * self.config.noise_factor
             min_distance = max(1, int(len(chrom.y_corrected) * self.config.min_distance_factor))
 
+            # Add minimum prominence to favor larger peaks
             peaks, properties = find_peaks(chrom.y_corrected,
                                        height=noise_threshold,
                                        distance=min_distance,
-                                       prominence=noise_threshold * 0.3)
+                                       prominence=(np.max(chrom.y_corrected) * 0.1))
 
             fitted_peaks = self._fit_gaussians(chrom, peaks, properties)
             chrom.peaks = fitted_peaks
 
         return chromatograms
 
-    def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
-        left_idx = peak.peak_metrics['left_base_index']
-        right_idx = peak.peak_metrics['right_base_index']
-        fit_width = (right_idx - left_idx) // 2
 
-        fit_indices = (x >= (x[peak.peak_metrics['index']] - fit_width)) & \
-                     (x <= (x[peak.peak_metrics['index']] + fit_width))
-        section_x = x[fit_indices]
-        section_y = y[fit_indices]
+    def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
+        # Use wider window for fitting
+        peak_idx = peak.peak_metrics['index']
+        window = int(len(x) * 0.05)  # 5% of total points
+        left_idx = max(0, peak_idx - window)
+        right_idx = min(len(x), peak_idx + window)
+
+        section_x = x[left_idx:right_idx]
+        section_y = y[left_idx:right_idx]
 
         try:
-            amplitude_bounds = (0, peak.peak_metrics['height'] * 1.5)
-            mean_bounds = (x[peak.peak_metrics['index']] - fit_width,
-                          x[peak.peak_metrics['index']] + fit_width)
-            stddev_bounds = (1e-6, fit_width)
+            amplitude_bounds = (0, peak.peak_metrics['height'] * 2.0)  # Allow higher amplitude
+            mean_bounds = (x[max(0, peak_idx - window//2)],
+                          x[min(len(x)-1, peak_idx + window//2)])
+            stddev_bounds = (1e-6, x[right_idx] - x[left_idx])
 
             bounds = ([amplitude_bounds[0], mean_bounds[0], stddev_bounds[0]],
                      [amplitude_bounds[1], mean_bounds[1], stddev_bounds[1]])
@@ -106,21 +108,18 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                               section_x,
                               section_y,
                               p0=[peak.peak_metrics['height'],
-                                  x[peak.peak_metrics['index']],
-                                  peak.peak_metrics['width'] * 0.5],
+                                  x[peak_idx],
+                                  peak.peak_metrics['width']],
                               bounds=bounds,
-                              maxfev=3000)  # Increased max iterations
+                              maxfev=5000)
 
-            # Calculate residuals for peak section
-            peak.peak_metrics['gaussian_residuals'] = np.sum((section_y - gaussian_curve(section_x, *popt))**2)
-
-            # Store fit parameters
+            peak.peak_metrics['gaussian_residuals'] = np.sum((section_y - gaussian_curve(section_x, *popt))**2) / peak.peak_metrics['height']
             peak.peak_metrics['fit_amplitude'] = popt[0]
             peak.peak_metrics['fit_mean'] = popt[1]
             peak.peak_metrics['fit_stddev'] = popt[2]
 
             peak.peak_metrics['approximation_curve'] = np.zeros_like(x)
-            peak.peak_metrics['approximation_curve'][fit_indices] = gaussian_curve(section_x, *popt)
+            peak.peak_metrics['approximation_curve'][left_idx:right_idx] = gaussian_curve(section_x, *popt)
 
         except RuntimeError:
             peak.peak_metrics['gaussian_residuals'] = float('inf')

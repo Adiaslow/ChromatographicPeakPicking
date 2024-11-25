@@ -51,9 +51,8 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                                                 rel_height=self.config.search_rel_height)
 
             fitted_peaks = []
-            for idx, peak_idx in enumerate(peaks):
+            for idx, peak_idx in enumerate(search_peaks):
                 peak_obj = Peak()
-                # Calculate peak boundaries
                 width_points = peak_widths(chrom.y_corrected, [peak_idx], rel_height=0.5)
                 left_idx = int(width_points[2][0])
                 right_idx = int(width_points[3][0])

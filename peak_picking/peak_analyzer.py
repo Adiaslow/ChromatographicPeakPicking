@@ -87,14 +87,19 @@ class PeakAnalyzer:
 
     @staticmethod
     def _calculate_peak_score(peak: Peak) -> Peak:
-        metrics = [
-            peak.peak_metrics['symmetry'],
-            1 / (1 + peak.peak_metrics['gaussian_residuals']),
-            min(peak.peak_metrics['resolution'] / 2, 1),
-            1 - abs(peak.peak_metrics['skewness']) / 2
-        ]
-        # Emphasize prominence and scale by area
-        peak.peak_metrics['score'] = (np.mean(metrics) *
-                                    peak.peak_metrics['prominence'] *
-                                    peak.peak_metrics['area']) * 0.1
-        return peak
+            metrics = [
+                peak.peak_metrics['symmetry'],
+                1 / (1 + peak.peak_metrics['gaussian_residuals']),
+                min(peak.peak_metrics['resolution'] / 2, 1),
+                1 - abs(peak.peak_metrics['skewness']) / 2
+            ]
+
+            # Add time penalty directly in score calculation
+            relative_time = peak.peak_metrics['time'] / 60  # Assuming time is in minutes
+            time_weight = (relative_time / 0.3) ** 4 if relative_time < 0.3 else 1.0
+
+            peak.peak_metrics['score'] = (np.mean(metrics) *
+                                        peak.peak_metrics['prominence'] *
+                                        peak.peak_metrics['area'] *
+                                        time_weight)
+            return peak

@@ -178,5 +178,37 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                 peak.peak_metrics['score'] = combined_score
 
             best_peak = max(chrom.peaks, key=lambda p: p.peak_metrics['score'])
+            if self._validate_peak_metrics(best_peak, chrom):
+                chrom.picked_peak = best_peak
 
         return chromatograms
+
+    def _validate_peak_metrics(self, peak: Peak, chromatogram: Chromatogram, debug: bool = True) -> bool:
+        def debug_print(msg: str):
+            if debug:
+                print(f"Peak at {peak.peak_metrics['time']:.2f} min failed: {msg}")
+
+        if peak.peak_metrics['score'] <= 0:
+            debug_print(f"score ({peak.peak_metrics['score']}) <= 0")
+            return False
+
+        if peak.peak_metrics['height'] < chromatogram.signal_metrics['noise_level'] * self.config.noise_factor:
+            debug_print(f"height ({peak.peak_metrics['height']}) < noise threshold ({chromatogram.signal_metrics['noise_level'] * self.config.noise_factor})")
+            return False
+
+        peak_width_relative = peak.peak_metrics['width'] / (chromatogram.x[-1] - chromatogram.x[0])
+        if not (self.config.width_min <= peak_width_relative <= self.config.width_max):
+            debug_print(f"relative width ({peak_width_relative:.3f}) outside range [{self.config.width_min}, {self.config.width_max}]")
+            return False
+
+        # Scale residuals threshold with peak height
+        adjusted_residuals_threshold = self.config.gaussian_residuals_threshold * (peak.peak_metrics['height'] / chromatogram.signal_metrics['noise_level'])
+        if peak.peak_metrics['gaussian_residuals'] > adjusted_residuals_threshold:
+            debug_print(f"gaussian residuals ({peak.peak_metrics['gaussian_residuals']:.2f}) > threshold ({adjusted_residuals_threshold})")
+            return False
+
+        if peak.peak_metrics['symmetry'] < self.config.symmetry_threshold:
+            debug_print(f"symmetry ({peak.peak_metrics['symmetry']:.2f}) < threshold ({self.config.symmetry_threshold})")
+            return False
+
+        return True

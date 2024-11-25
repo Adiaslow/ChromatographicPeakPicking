@@ -19,7 +19,7 @@ class SGPPMConfig(Config):
         None
     """
     correction_method = "SWM"
-    window_length = 3
+    window_length = 5
     fit_points = 100
     search_rel_height = 0.01
     pick_rel_height = 0.4

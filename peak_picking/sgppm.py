@@ -68,7 +68,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                     'width': chrom.x[right_idx] - chrom.x[left_idx]
                 })
 
-                peak_obj = self._fit_gaussian(chrom.x, chrom.y, peak_obj)
+                peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
                 if peak_obj.peak_metrics.get('fit_stddev', float('inf')) < self.config.stddev_threshold:
                     fitted_peaks.append(peak_obj)
 
@@ -77,42 +77,40 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
         peak_idx = peak.peak_metrics['index']
-        width = peak.peak_metrics['width']
-        fit_width = width + 1
+        window = int(len(x) * 0.02)
+        left_idx = max(0, peak_idx - window)
+        right_idx = min(len(x), peak_idx + window)
 
-        # Create fit region
-        fit_indices = (x >= (x[peak_idx] - fit_width)) & (x <= (x[peak_idx] + fit_width))
-        fit_x = np.linspace(x[peak_idx] - fit_width, x[peak_idx] + fit_width, self.config.fit_points)
-        fit_y = np.interp(fit_x, x[fit_indices], y[fit_indices])
+        section_x = x[left_idx:right_idx]
+        section_y = y[left_idx:right_idx]
 
         try:
             height = peak.peak_metrics['height']
             mean = x[peak_idx]
+            width = (section_x[-1] - section_x[0]) / 5.0
+
+            amplitude_bounds = (height * 0.1, height * 2.0)
+            mean_bounds = (section_x[0], section_x[-1])
+            width_bounds = (width * 0.1, width * 5.0)
 
             p0 = [height, mean, width]
-            bounds = ([0, mean - fit_width, 1e-6],
-                     [height * 1.5, mean + fit_width, fit_width])
+            bounds = ([amplitude_bounds[0], mean_bounds[0], width_bounds[0]],
+                     [amplitude_bounds[1], mean_bounds[1], width_bounds[1]])
 
             popt, _ = curve_fit(gaussian_curve,
-                              fit_x,
-                              fit_y,
+                              section_x,
+                              section_y,
                               p0=p0,
                               bounds=bounds,
-                              maxfev=3000)
-
-            window = tukey(len(fit_x), alpha=0.75)
-            fit_y_values = gaussian_curve(fit_x, *popt) * window
+                              maxfev=2000)
 
             peak.peak_metrics.update({
-                'gaussian_residuals': np.sum((fit_y - fit_y_values)**2) / height,
+                'gaussian_residuals': np.sum((section_y - gaussian_curve(section_x, *popt))**2) / height,
                 'fit_amplitude': popt[0],
                 'fit_mean': popt[1],
                 'fit_stddev': popt[2],
-                'approximation_curve': np.zeros_like(x)
+                'approximation_curve': self._generate_approximation_curve(x, section_x, popt, left_idx, right_idx)
             })
-
-            # Interpolate fitted values back to original x grid
-            peak.peak_metrics['approximation_curve'][fit_indices] = np.interp(x[fit_indices], fit_x, fit_y_values)
 
         except (RuntimeError, ValueError):
             peak.peak_metrics['gaussian_residuals'] = float('inf')

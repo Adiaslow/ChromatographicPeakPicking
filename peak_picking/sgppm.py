@@ -169,27 +169,32 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
         return chromatograms
 
-    def _validate_peak_metrics(self, peak: Peak, chromatogram: Chromatogram) -> bool:
+    def _validate_peak_metrics(self, peak: Peak, chromatogram: Chromatogram, debug: bool = True) -> bool:
+        def debug_print(msg: str):
+            if debug:
+                print(f"Peak at {peak.peak_metrics['time']:.2f} min failed: {msg}")
+
         if peak.peak_metrics['score'] <= 0:
+            debug_print(f"score ({peak.peak_metrics['score']}) <= 0")
             return False
 
-        # Height validation relative to noise
         if peak.peak_metrics['height'] < chromatogram.signal_metrics['noise_level'] * self.config.noise_factor:
+            debug_print(f"height ({peak.peak_metrics['height']}) < noise threshold ({chromatogram.signal_metrics['noise_level'] * self.config.noise_factor})")
             return False
 
-        # Width validation
         total_points = len(chromatogram.x)
         min_width = total_points * self.config.width_min
         max_width = total_points * self.config.width_max
         if not (min_width <= peak.peak_metrics['width'] <= max_width):
+            debug_print(f"width ({peak.peak_metrics['width']}) outside range [{min_width:.1f}, {max_width:.1f}]")
             return False
 
-        # Gaussian fit quality
         if peak.peak_metrics['gaussian_residuals'] > self.config.gaussian_residuals_threshold:
+            debug_print(f"gaussian residuals ({peak.peak_metrics['gaussian_residuals']:.2f}) > threshold ({self.config.gaussian_residuals_threshold})")
             return False
 
-        # Symmetry check
         if peak.peak_metrics['symmetry'] < self.config.symmetry_threshold:
+            debug_print(f"symmetry ({peak.peak_metrics['symmetry']:.2f}) < threshold ({self.config.symmetry_threshold})")
             return False
 
         return True

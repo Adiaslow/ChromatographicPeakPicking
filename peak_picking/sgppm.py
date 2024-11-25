@@ -142,7 +142,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
 
             # Generate full curve and calculate metrics
             fitted_curve = self._generate_approximation_curve(x, section_x, popt, left_idx, right_idx)
-            residuals = np.sum((section_y - self.gaussian_curve(section_x, *popt))**2)
+            residuals = np.sum((section_y - gaussian_curve(section_x, *popt))**2)
             normalized_residuals = residuals / (height * len(section_y))
 
             # Update peak metrics
@@ -168,7 +168,7 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         curve = np.zeros_like(x)
 
         # Generate fitted values for section
-        section_values = self.gaussian_curve(section_x, *popt)
+        section_values = gaussian_curve(section_x, *popt)
 
         # Apply Gaussian tails naturally beyond the fitting region
         # This ensures smooth decay to zero
@@ -177,12 +177,12 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         # Extend the Gaussian curve to the left if possible
         if left_idx > 0:
             left_x = x[:left_idx]
-            curve[:left_idx] = self.gaussian_curve(left_x, *popt)
+            curve[:left_idx] = gaussian_curve(left_x, *popt)
 
         # Extend the Gaussian curve to the right if possible
         if right_idx < len(x):
             right_x = x[right_idx:]
-            curve[right_idx:] = self.gaussian_curve(right_x, *popt)
+            curve[right_idx:] = gaussian_curve(right_x, *popt)
 
         return curve
 

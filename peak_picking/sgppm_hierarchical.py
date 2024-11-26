@@ -9,20 +9,10 @@ from .hierarchy import Hierarchy
 from .sgppm import SimpleGaussianPeakPickingModel
 from .sgppm_config import SGPPMConfig
 
-from dataclasses import dataclass, field
-import numpy as np
-from typing import List, Union, Dict, Tuple
-
-from .building_block import BuildingBlock
-from .chromatogram import Chromatogram
-from .chromatogram_analyzer import ChromatogramAnalyzer
-from .hierarchy import Hierarchy
-from .sgppm import SimpleGaussianPeakPickingModel
-from .sgppm_config import SGPPMConfig
-
 @dataclass
 class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel):
     config: SGPPMConfig = field(default_factory=SGPPMConfig)
+    debug: bool = True
 
     def pick_peaks(self, chromatograms: Union[List[Chromatogram], Chromatogram]) -> Union[List[Chromatogram], Chromatogram]:
         if isinstance(chromatograms, Chromatogram):
@@ -59,6 +49,9 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
             ]
 
             if level_chromatograms:
+                if self.debug:
+                    print(f"\nProcessing Level {level} Sequences:")
+
                 # Process this level's chromatograms
                 processed_chroms = self._process_level(
                     level_chromatograms,
@@ -70,10 +63,17 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
 
                 # Update elution times and intensities
                 for chrom in processed_chroms:
+                    sequence = tuple(chrom.building_blocks)
+                    sequence_str = '-'.join(bb.name for bb in sequence)
+
                     if chrom.picked_peak:
-                        sequence_tuple = tuple(chrom.building_blocks)
-                        elution_times[sequence_tuple] = chrom.picked_peak.peak_metrics['time']
-                        peak_intensities[sequence_tuple] = chrom.picked_peak.peak_metrics['height']
+                        elution_times[sequence] = chrom.picked_peak.peak_metrics['time']
+                        peak_intensities[sequence] = chrom.picked_peak.peak_metrics['height']
+                        if self.debug:
+                            print(f"Sequence: {sequence_str}, Peak picked at time {chrom.picked_peak.peak_metrics['time']:.2f} with height {chrom.picked_peak.peak_metrics['height']:.2f}")
+                    else:
+                        if self.debug:
+                            print(f"Sequence: {sequence_str}, No peak picked")
 
                 results.extend(processed_chroms)
 
@@ -121,6 +121,7 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
         """Adjust peak search parameters based on elution times of simpler sequences"""
         for chrom in chromatograms:
             sequence = tuple(chrom.building_blocks)
+            sequence_str = '-'.join(bb.name for bb in sequence)
 
             # Get all descendants and their elution times
             descendants = sequence_hierarchy.get_descendants(sequence)
@@ -132,6 +133,14 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
             if valid_descendant_times:
                 # Use latest eluting descendant as reference
                 latest_time = max(valid_descendant_times)
+
+                if self.debug:
+                    desc_times = {'-'.join(d.name for d in desc): elution_times[desc]
+                                for desc in descendants if desc in elution_times}
+                    print(f"\nAdjusting search parameters for {sequence_str}:")
+                    print(f"Descendant elution times: {desc_times}")
+                    print(f"Latest descendant time: {latest_time:.2f}")
+                    print(f"Setting minimum search time to: {latest_time + self.config.peak_time_threshold:.2f}")
 
                 # Set the search window
                 min_time = latest_time + self.config.peak_time_threshold
@@ -158,45 +167,89 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
     ) -> List[Chromatogram]:
         """Select peaks considering hierarchical constraints"""
         for chrom in chromatograms:
+            sequence = tuple(chrom.building_blocks)
+            sequence_str = '-'.join(bb.name for bb in sequence)
+
+            if self.debug:
+                print(f"\nAnalyzing peaks for sequence: {sequence_str}")
+                if not chrom.peaks:
+                    print("No peaks detected in initial peak finding")
+                else:
+                    print(f"Found {len(chrom.peaks)} potential peaks")
+
             if not chrom.peaks:
                 continue
 
-            sequence = tuple(chrom.building_blocks)
             descendants = sequence_hierarchy.get_descendants(sequence)
-
-            # Get maximum intensity from descendants
             max_descendant_intensity = max(
                 [peak_intensities.get(desc, 0) for desc in descendants],
                 default=0
             )
+
+            if self.debug and descendants:
+                desc_intensities = {'-'.join(d.name for d in desc): peak_intensities.get(desc, 0)
+                                  for desc in descendants}
+                print(f"Descendant intensities: {desc_intensities}")
+                print(f"Maximum descendant intensity: {max_descendant_intensity:.2f}")
 
             valid_peaks = []
             for peak in chrom.peaks:
                 peak_height = peak.peak_metrics['height']
                 peak_time = peak.peak_metrics['time']
 
-                # Check if peak meets basic criteria
-                if (peak_height >= self.config.height_threshold and
-                    peak_height >= chrom.y_corrected.max() * self.config.pick_rel_height):
+                if self.debug:
+                    print(f"\nEvaluating peak at time {peak_time:.2f} with height {peak_height:.2f}")
 
-                    # For higher levels, ensure peak is higher than descendants
-                    if sequence_hierarchy.get_level(sequence) == 0 or peak_height > max_descendant_intensity:
-                        # Check timing constraints relative to descendants
-                        valid_timing = True
-                        for desc in descendants:
-                            if desc in elution_times:
-                                if peak_time <= elution_times[desc] + self.config.peak_time_threshold:
-                                    valid_timing = False
-                                    break
+                # Check basic height threshold
+                if peak_height < self.config.height_threshold:
+                    if self.debug:
+                        print(f"Peak rejected: Height {peak_height:.2f} below threshold {self.config.height_threshold}")
+                    continue
 
-                        if valid_timing:
-                            valid_peaks.append(peak)
+                # Check relative height threshold
+                if peak_height < chrom.y_corrected.max() * self.config.pick_rel_height:
+                    if self.debug:
+                        print(f"Peak rejected: Height {peak_height:.2f} below relative threshold "
+                              f"({self.config.pick_rel_height * 100}% of max {chrom.y_corrected.max():.2f})")
+                    continue
+
+                # For higher levels, check intensity relative to descendants
+                if sequence_hierarchy.get_level(sequence) > 0:
+                    if peak_height <= max_descendant_intensity:
+                        if self.debug:
+                            print(f"Peak rejected: Height {peak_height:.2f} not greater than "
+                                  f"maximum descendant intensity {max_descendant_intensity:.2f}")
+                        continue
+
+                # Check timing constraints relative to descendants
+                valid_timing = True
+                for desc in descendants:
+                    if desc in elution_times:
+                        desc_time = elution_times[desc]
+                        min_required_time = desc_time + self.config.peak_time_threshold
+                        if peak_time <= min_required_time:
+                            if self.debug:
+                                desc_str = '-'.join(d.name for d in desc)
+                                print(f"Peak rejected: Time {peak_time:.2f} not after descendant "
+                                      f"{desc_str} time {desc_time:.2f} plus threshold {self.config.peak_time_threshold}")
+                            valid_timing = False
+                            break
+
+                if valid_timing:
+                    if self.debug:
+                        print("Peak passed all criteria")
+                    valid_peaks.append(peak)
 
             # Select the latest eluting valid peak
             if valid_peaks:
                 chrom.picked_peak = max(valid_peaks, key=lambda p: p.peak_metrics['time'])
+                if self.debug:
+                    print(f"\nSelected peak at time {chrom.picked_peak.peak_metrics['time']:.2f} "
+                          f"with height {chrom.picked_peak.peak_metrics['height']:.2f}")
             else:
                 chrom.picked_peak = None
+                if self.debug:
+                    print("\nNo valid peaks found after applying all criteria")
 
         return chromatograms
 

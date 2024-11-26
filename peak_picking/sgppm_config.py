@@ -31,3 +31,4 @@ class SGPPMConfig(Config):
     min_distance_factor = 0.03
     symmetry_threshold = 0.25
     noise_factor = 3.0
+    peak_time_threshold = 0.5

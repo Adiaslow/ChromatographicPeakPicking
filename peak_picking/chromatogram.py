@@ -33,6 +33,7 @@ class Chromatogram:
     x: Optional[np.array] = None
     y: Optional[np.array] = None
     y_corrected: Optional[np.array] = None
+    search_mask: Optional[np.array] = None
     peaks: List[Peak] = field(default_factory=list)
     picked_peak: Optional[Peak] = None
     building_blocks: Optional[List[BuildingBlock]] = None

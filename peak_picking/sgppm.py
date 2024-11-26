@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 import numpy as np
-from scipy.optimize import curve_fit, OptimizeWarning
+from scipy.optimize import curve_fit
 from scipy.signal import find_peaks, peak_widths, savgol_filter
-from scipy.signal.windows import tukey
 from scipy.interpolate import interp1d
-from typing import List, Optional, Tuple, Union
+from typing import List, Union
 
 from .baseline_corrector import BaselineCorrector
 from .chromatogram import Chromatogram
@@ -14,9 +13,6 @@ from .peak import Peak
 from .peak_analyzer import PeakAnalyzer
 from .peak_picker import PeakPicker
 from .sgppm_config import SGPPMConfig
-
-import warnings
-warnings.filterwarnings('ignore', category=OptimizeWarning)
 
 @dataclass
 class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):

@@ -12,7 +12,7 @@ from .sgppm_config import SGPPMConfig
 @dataclass
 class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel):
     config: SGPPMConfig = field(default_factory=SGPPMConfig)
-    debug: bool = False
+    debug: bool = True
 
     def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
         """Override base class peak finding to incorporate search masks"""

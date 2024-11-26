@@ -2,9 +2,9 @@ from dataclasses import dataclass, field
 import numpy as np
 from typing import List, Union, Dict, Tuple
 
+from .building_block import BuildingBlock
 from .chromatogram import Chromatogram
 from .hierarchy import Hierarchy
-from .peak_analyzer import PeakAnalyzer
 from .sgppm import SimpleGaussianPeakPickingModel
 from .sgppm_config import SGPPMConfig
 

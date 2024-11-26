@@ -4,6 +4,7 @@ from typing import List, Union, Dict, Tuple
 
 from .building_block import BuildingBlock
 from .chromatogram import Chromatogram
+from .chromatogram_analyzer import ChromatogramAnalyzer
 from .hierarchy import Hierarchy
 from .sgppm import SimpleGaussianPeakPickingModel
 from .sgppm_config import SGPPMConfig

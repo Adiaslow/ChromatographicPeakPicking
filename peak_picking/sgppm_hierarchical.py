@@ -9,6 +9,17 @@ from .hierarchy import Hierarchy
 from .sgppm import SimpleGaussianPeakPickingModel
 from .sgppm_config import SGPPMConfig
 
+from dataclasses import dataclass, field
+import numpy as np
+from typing import List, Union, Dict, Tuple
+
+from .building_block import BuildingBlock
+from .chromatogram import Chromatogram
+from .chromatogram_analyzer import ChromatogramAnalyzer
+from .hierarchy import Hierarchy
+from .sgppm import SimpleGaussianPeakPickingModel
+from .sgppm_config import SGPPMConfig
+
 @dataclass
 class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel):
     config: SGPPMConfig = field(default_factory=SGPPMConfig)
@@ -19,7 +30,8 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
 
         # Create local hierarchy and elution times for this set of chromatograms
         sequence_hierarchy = Hierarchy(null_element=BuildingBlock(name='Null'))
-        elution_times = {}
+        elution_times: Dict[Tuple[BuildingBlock, ...], float] = {}
+        peak_intensities: Dict[Tuple[BuildingBlock, ...], float] = {}
 
         # Generate mapping of building block tuples to chromatograms
         sequence_to_chrom = {
@@ -37,7 +49,7 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
         all_sequences.append(base_sequence)
         sequence_hierarchy.add_sequences(all_sequences)
 
-        # Process chromatograms by level
+        # Process chromatograms by level, starting from simplest (most Nulls)
         results = []
         for level in range(len(base_sequence) + 1):
             sequences = sequence_hierarchy.get_sequences_by_level(level)
@@ -47,23 +59,23 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
             ]
 
             if level_chromatograms:
+                # Process this level's chromatograms
                 processed_chroms = self._process_level(
                     level_chromatograms,
                     level,
                     sequence_hierarchy,
-                    elution_times
+                    elution_times,
+                    peak_intensities
                 )
 
-                # Store elution times for processed chromatograms
+                # Update elution times and intensities
                 for chrom in processed_chroms:
                     if chrom.picked_peak:
                         sequence_tuple = tuple(chrom.building_blocks)
                         elution_times[sequence_tuple] = chrom.picked_peak.peak_metrics['time']
+                        peak_intensities[sequence_tuple] = chrom.picked_peak.peak_metrics['height']
 
                 results.extend(processed_chroms)
-
-        # Update hierarchy with elution times
-        sequence_hierarchy.set_sequence_values(elution_times)
 
         return results[0] if len(chromatograms) == 1 else results
 
@@ -72,30 +84,37 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
         chromatograms: List[Chromatogram],
         level: int,
         sequence_hierarchy: Hierarchy,
-        elution_times: Dict[Tuple[BuildingBlock, ...], float]
+        elution_times: Dict[Tuple[BuildingBlock, ...], float],
+        peak_intensities: Dict[Tuple[BuildingBlock, ...], float]
     ) -> List[Chromatogram]:
         """Process chromatograms at a specific level of the hierarchy"""
         # Prepare chromatograms (baseline correction etc.)
         chromatograms = self._prepare_chromatograms(chromatograms)
 
-        # Analyze chromatogram properties
+        # Analyze signal properties
         for chrom in chromatograms:
             chrom.signal_metrics = ChromatogramAnalyzer.analyze_chromatogram(chrom)
 
-        # For sequences with N elements, use information from simpler sequences
+        # For sequences with non-zero level, use information from simpler sequences
         if level > 0:
-            self._adjust_search_parameters(chromatograms, level, sequence_hierarchy, elution_times)
+            self._adjust_search_parameters(chromatograms, sequence_hierarchy, elution_times)
 
-        # Find and select peaks
+        # Find peaks with adjusted parameters
         chromatograms = self._find_peaks(chromatograms)
-        chromatograms = self._select_peaks(chromatograms)
+
+        # Select peaks considering hierarchy constraints
+        chromatograms = self._hierarchical_peak_selection(
+            chromatograms,
+            sequence_hierarchy,
+            elution_times,
+            peak_intensities
+        )
 
         return chromatograms
 
     def _adjust_search_parameters(
         self,
         chromatograms: List[Chromatogram],
-        level: int,
         sequence_hierarchy: Hierarchy,
         elution_times: Dict[Tuple[BuildingBlock, ...], float]
     ):
@@ -103,32 +122,83 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
         for chrom in chromatograms:
             sequence = tuple(chrom.building_blocks)
 
-            # Get descendants (simpler sequences) and their elution times
+            # Get all descendants and their elution times
             descendants = sequence_hierarchy.get_descendants(sequence)
-            descendant_times = [
-                elution_times[desc]
-                for desc in descendants
+            valid_descendant_times = [
+                elution_times[desc] for desc in descendants
                 if desc in elution_times
             ]
 
-            if descendant_times:
-                # Find the latest eluting descendant
-                latest_descendant_time = max(descendant_times)
+            if valid_descendant_times:
+                # Use latest eluting descendant as reference
+                latest_time = max(valid_descendant_times)
 
-                # Set minimum elution time for this sequence
-                min_allowed_time = latest_descendant_time + self.config.peak_time_threshold
+                # Set the search window
+                min_time = latest_time + self.config.peak_time_threshold
+                max_time = chrom.x[-1]
 
-                # Calculate the time window where peaks should be searched
-                peak_search_window = (
-                    min_allowed_time,  # Start after the latest descendant plus threshold
-                    chrom.x[-1]        # End at the last time point
-                )
+                # Find corresponding indices
+                min_idx = np.searchsorted(chrom.x, min_time)
+                max_idx = len(chrom.x)
 
-                # Store the search window in the chromatogram object
-                chrom.search_window = peak_search_window
+                # Create search mask
+                chrom.search_mask = np.zeros_like(chrom.y, dtype=bool)
+                chrom.search_mask[min_idx:max_idx] = True
 
-                # Apply the search window
-                self._update_peak_constraints(chrom, peak_search_window)
+                # Zero out signal outside search window
+                masked_signal = np.where(chrom.search_mask, chrom.y_corrected, 0)
+                chrom.y_corrected = masked_signal
+
+    def _hierarchical_peak_selection(
+        self,
+        chromatograms: List[Chromatogram],
+        sequence_hierarchy: Hierarchy,
+        elution_times: Dict[Tuple[BuildingBlock, ...], float],
+        peak_intensities: Dict[Tuple[BuildingBlock, ...], float]
+    ) -> List[Chromatogram]:
+        """Select peaks considering hierarchical constraints"""
+        for chrom in chromatograms:
+            if not chrom.peaks:
+                continue
+
+            sequence = tuple(chrom.building_blocks)
+            descendants = sequence_hierarchy.get_descendants(sequence)
+
+            # Get maximum intensity from descendants
+            max_descendant_intensity = max(
+                [peak_intensities.get(desc, 0) for desc in descendants],
+                default=0
+            )
+
+            valid_peaks = []
+            for peak in chrom.peaks:
+                peak_height = peak.peak_metrics['height']
+                peak_time = peak.peak_metrics['time']
+
+                # Check if peak meets basic criteria
+                if (peak_height >= self.config.height_threshold and
+                    peak_height >= chrom.y_corrected.max() * self.config.pick_rel_height):
+
+                    # For higher levels, ensure peak is higher than descendants
+                    if sequence_hierarchy.get_level(sequence) == 0 or peak_height > max_descendant_intensity:
+                        # Check timing constraints relative to descendants
+                        valid_timing = True
+                        for desc in descendants:
+                            if desc in elution_times:
+                                if peak_time <= elution_times[desc] + self.config.peak_time_threshold:
+                                    valid_timing = False
+                                    break
+
+                        if valid_timing:
+                            valid_peaks.append(peak)
+
+            # Select the latest eluting valid peak
+            if valid_peaks:
+                chrom.picked_peak = max(valid_peaks, key=lambda p: p.peak_metrics['time'])
+            else:
+                chrom.picked_peak = None
+
+        return chromatograms
 
     def _update_peak_constraints(self, chrom: Chromatogram, search_window: Tuple[float, float]):
         """

@@ -65,13 +65,20 @@ def test_sgppm_hierarchical():
 
     for sequence, data in hierarchy_data.items():
         # Process the chromatography data
+        data = data.replace(";", ":")  # Standardize separators
         times, intensities = process_chromatography_data(data)
 
-        # Create chromatogram with sequence information
+        # Convert sequence tuple to BuildingBlock objects
+        building_blocks = [
+            BuildingBlock(name=block) if block != 'Null' else BuildingBlock(name='N')
+            for block in sequence
+        ]
+
+        # Create chromatogram with building blocks
         chrom = Chromatogram(
             x=times,
             y=intensities,
-            sequence=create_sequence_from_tuple(sequence)
+            building_blocks=building_blocks
         )
         chromatograms.append(chrom)
 
@@ -84,7 +91,7 @@ def test_sgppm_hierarchical():
 
     # Optional: Print results for verification
     for chrom in processed_chromatograms:
-        sequence_str = ''.join(str(s) for s in chrom.sequence)
+        sequence_str = ''.join(bb.name for bb in chrom.building_blocks)
         if chrom.picked_peak:
             peak_time = chrom.picked_peak.peak_metrics['time']
             peak_height = chrom.picked_peak.peak_metrics['height']
@@ -93,3 +100,34 @@ def test_sgppm_hierarchical():
             print(f"Sequence: {sequence_str}, No peak picked")
 
     return processed_chromatograms
+
+def process_chromatography_data(data_str: str) -> Tuple[np.ndarray, np.ndarray]:
+    """Convert string data to sorted time and intensity arrays"""
+    # Split the data points
+    points = data_str.split(',')
+    times = []
+    intensities = []
+
+    # Process each point
+    for point in points:
+        point = point.strip()
+        if not point:
+            continue
+        # Split into time and intensity parts
+        time_intensity = point.split(':')
+        time = float(time_intensity[0])
+        # Take the first intensity value if there are multiple
+        intensity = float(time_intensity[1].split(';')[0])
+        times.append(time)
+        intensities.append(intensity)
+
+    # Convert to numpy arrays and sort by time
+    times = np.array(times)
+    intensities = np.array(intensities)
+    sort_idx = np.argsort(times)
+
+    return times[sort_idx], intensities[sort_idx]
+
+# Run the test
+if __name__ == "__main__":
+    chromatograms = test_sgppm_hierarchical()

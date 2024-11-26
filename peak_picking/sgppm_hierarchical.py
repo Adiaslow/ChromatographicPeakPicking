@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import numpy as np
-from scipy.signal import find_peaks, peak_widths
+from scipy.signal import find_peaks, peak_widths, savgol_filter
 from typing import List, Dict, Tuple
 
 from .building_block import BuildingBlock

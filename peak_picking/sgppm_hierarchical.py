@@ -8,6 +8,7 @@ from .chromatogram import Chromatogram
 from .chromatogram_analyzer import ChromatogramAnalyzer
 from .hierarchy import Hierarchy
 from .peak import Peak
+from .peak_analyzer import PeakAnalyzer
 from .sgppm import SimpleGaussianPeakPickingModel
 from .sgppm_config import SGPPMConfig
 

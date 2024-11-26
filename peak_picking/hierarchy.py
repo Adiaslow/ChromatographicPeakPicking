@@ -1,10 +1,12 @@
 from collections import defaultdict
-from typing import Any, Dict, Generic, List, Optional, Set, TypeVar, Tuple
+from typing import Dict, Generic, List, Optional, Set, TypeVar, Tuple
 from itertools import combinations
+
+from .building_block import BuildingBlock
 
 T = TypeVar('T')  # Type of elements in the sequence
 N = TypeVar('N')  # Type of null element
-V = TypeVar('V')  # Type of values associated with sequences
+V = TypeVar('V')  # Type of value (typically float for elution times)
 
 class Hierarchy(Generic[T, N, V]):
     """
@@ -12,83 +14,24 @@ class Hierarchy(Generic[T, N, V]):
     with optional values (e.g., elution times) associated with complete sequences.
     """
 
-    def __init__(self, null_element: N):
+    def __init__(self, null_element: BuildingBlock):
         """
         Initialize the hierarchy with a specified null element
 
         Args:
-            null_element: The element that represents a null/empty position
+            null_element: BuildingBlock that represents a null/empty position
         """
         self.null_element = null_element
-        self.levels: Dict[int, Set[Tuple[Any, ...]]] = defaultdict(set)
-        self.descendants: Dict[Tuple[Any, ...], Set[Tuple[Any, ...]]] = defaultdict(set)
-        self.ancestors: Dict[Tuple[Any, ...], Set[Tuple[Any, ...]]] = defaultdict(set)
-        # Store values for sequences
-        self.sequence_values: Dict[Tuple[Any, ...], V] = {}
+        self.levels: Dict[int, Set[Tuple[BuildingBlock, ...]]] = defaultdict(set)
+        self.descendants: Dict[Tuple[BuildingBlock, ...], Set[Tuple[BuildingBlock, ...]]] = defaultdict(set)
+        self.ancestors: Dict[Tuple[BuildingBlock, ...], Set[Tuple[BuildingBlock, ...]]] = defaultdict(set)
+        self.sequence_values: Dict[Tuple[BuildingBlock, ...], V] = {}
 
-    def set_sequence_value(self, sequence: Tuple[Any, ...], value: V) -> None:
-        """
-        Set a value for a specific sequence.
+    def count_non_null(self, sequence: Tuple[BuildingBlock, ...]) -> int:
+        """Returns the number of non-null elements in the sequence"""
+        return sum(1 for elem in sequence if elem != self.null_element)
 
-        Args:
-            sequence: The sequence to set the value for
-            value: The value to associate with the sequence
-        """
-        self.sequence_values[sequence] = value
-
-    def set_sequence_values(self, values: Dict[Tuple[Any, ...], V]) -> None:
-        """
-        Set values for multiple sequences at once.
-
-        Args:
-            values: Dictionary mapping sequences to their values
-        """
-        self.sequence_values.update(values)
-
-    def get_sequence_value(self, sequence: Tuple[Any, ...]) -> Optional[V]:
-        """
-        Get the value associated with a sequence.
-
-        Args:
-            sequence: The sequence to get the value for
-
-        Returns:
-            The sequence's value, or None if not set
-        """
-        return self.sequence_values.get(sequence)
-
-    def get_ordered_sequences_by_level(self, level: int) -> List[Tuple[Any, ...]]:
-        """
-        Get sequences at a specific level, ordered by their values.
-
-        Args:
-            level: The level to get sequences for
-
-        Returns:
-            List of sequences ordered by their values (if available)
-        """
-        sequences = list(self.levels[level])
-        if self.sequence_values:
-            sequences.sort(key=lambda x: (self.sequence_values.get(x, float('inf'))))
-        return sequences
-
-    def get_ordered_descendants(self, sequence: Tuple[Any, ...]) -> List[Tuple[Any, ...]]:
-        """
-        Get descendants of a sequence, ordered by their values.
-
-        Returns:
-            List of descendants ordered by their values (if available)
-        """
-        descendants = list(self.descendants[sequence])
-        if self.sequence_values:
-            descendants.sort(key=lambda x: (self.sequence_values.get(x, float('inf'))))
-        return descendants
-
-    def count_non_null(self, sequence: Tuple[Any, ...]) -> int:
-            """Returns the number of non-null elements in the sequence"""
-            return sum(1 for elem in sequence if elem != self.null_element)
-
-    def get_direct_descendants(self, sequence: Tuple[Any, ...]) -> Set[Tuple[Any, ...]]:
+    def get_direct_descendants(self, sequence: Tuple[BuildingBlock, ...]) -> Set[Tuple[BuildingBlock, ...]]:
         """
         Generate all direct descendants of a sequence by replacing one non-null element with null
         """
@@ -99,14 +42,10 @@ class Hierarchy(Generic[T, N, V]):
                 descendants.add(descendant)
         return descendants
 
-    def generate_descendants_with_k_elements(self, sequence: Tuple[Any, ...], k: int) -> Set[Tuple[Any, ...]]:
+    def generate_descendants_with_k_elements(self, sequence: Tuple[BuildingBlock, ...], k: int) -> Set[Tuple[BuildingBlock, ...]]:
         """
         Generate all sequences with exactly k non-null elements that preserve the relative order
         of elements from the original sequence.
-
-        Args:
-            sequence: Original sequence
-            k: Number of non-null elements to keep
         """
         result = set()
 
@@ -123,7 +62,7 @@ class Hierarchy(Generic[T, N, V]):
             selected_elements = [non_null_elements[i] for i in selected_indices]
 
             # Generate all possible positions for these k elements while maintaining their order
-            def place_elements(curr_pos: int, elem_idx: int, curr_sequence: List[Any]) -> None:
+            def place_elements(curr_pos: int, elem_idx: int, curr_sequence: List[BuildingBlock]) -> None:
                 if elem_idx == len(selected_elements):
                     result.add(tuple(curr_sequence))
                     return
@@ -144,25 +83,20 @@ class Hierarchy(Generic[T, N, V]):
 
         return result
 
-    def generate_all_descendants(self, sequence: Tuple[Any, ...]) -> List[Tuple[Any, ...]]:
-            """
-            Generate all possible descendants of a sequence that preserve relative order.
-            """
-            sequences = []
-            original_length = len(sequence)
-            non_null_count = self.count_non_null(sequence)
+    def generate_all_descendants(self, sequence: Tuple[BuildingBlock, ...]) -> List[Tuple[BuildingBlock, ...]]:
+        """Generate all possible descendants of a sequence that preserve relative order."""
+        sequences = []
+        original_length = len(sequence)
+        non_null_count = self.count_non_null(sequence)
 
-            # Generate sequences for each possible number of non-null elements
-            for k in range(non_null_count + 1):
-                sequences_with_k = self.generate_descendants_with_k_elements(sequence, k)
-                sequences.extend(sequences_with_k)
+        for k in range(non_null_count + 1):
+            sequences_with_k = self.generate_descendants_with_k_elements(sequence, k)
+            sequences.extend(sequences_with_k)
 
-            return sequences
+        return sequences
 
-    def add_sequence(self, sequence: Tuple[Any, ...]) -> None:
-        """
-        Add a sequence to the hierarchy and compute its relationships
-        """
+    def add_sequence(self, sequence: Tuple[BuildingBlock, ...]) -> None:
+        """Add a sequence to the hierarchy and compute its relationships"""
         level = self.count_non_null(sequence)
         self.levels[level].add(sequence)
 
@@ -174,33 +108,35 @@ class Hierarchy(Generic[T, N, V]):
         for desc in direct_desc:
             self.ancestors[desc].add(sequence)
 
-    def add_sequences(self, sequences: List[Tuple[Any, ...]]) -> None:
-        """
-        Add multiple sequences to the hierarchy
-        """
+    def add_sequences(self, sequences: List[Tuple[BuildingBlock, ...]]) -> None:
+        """Add multiple sequences to the hierarchy"""
         for sequence in sequences:
             self.add_sequence(sequence)
 
-    def get_sequences_by_level(self, level: int) -> Set[Tuple[Any, ...]]:
-        """
-        Get all sequences with a specific number of non-null elements
-        """
+    def get_sequences_by_level(self, level: int) -> Set[Tuple[BuildingBlock, ...]]:
+        """Get all sequences with a specific number of non-null elements"""
         return self.levels[level]
 
-    def get_level(self, sequence: Tuple[Any, ...]) -> int:
-        """
-        Get the level (number of non-null elements) of a sequence
-        """
+    def get_level(self, sequence: Tuple[BuildingBlock, ...]) -> int:
+        """Get the level (number of non-null elements) of a sequence"""
         return self.count_non_null(sequence)
 
-    def get_ancestors(self, sequence: Tuple[Any, ...]) -> Set[Tuple[Any, ...]]:
-        """
-        Get all sequences that can have elements replaced to get this sequence
-        """
+    def get_ancestors(self, sequence: Tuple[BuildingBlock, ...]) -> Set[Tuple[BuildingBlock, ...]]:
+        """Get all sequences that can have elements replaced to get this sequence"""
         return self.ancestors[sequence]
 
-    def get_descendants(self, sequence: Tuple[Any, ...]) -> Set[Tuple[Any, ...]]:
-        """
-        Get direct descendants of a sequence
-        """
+    def get_descendants(self, sequence: Tuple[BuildingBlock, ...]) -> Set[Tuple[BuildingBlock, ...]]:
+        """Get direct descendants of a sequence"""
         return self.descendants[sequence]
+
+    def set_sequence_value(self, sequence: Tuple[BuildingBlock, ...], value: V) -> None:
+        """Set a value for a specific sequence"""
+        self.sequence_values[sequence] = value
+
+    def set_sequence_values(self, values: Dict[Tuple[BuildingBlock, ...], V]) -> None:
+        """Set values for multiple sequences at once"""
+        self.sequence_values.update(values)
+
+    def get_sequence_value(self, sequence: Tuple[BuildingBlock, ...]) -> Optional[V]:
+        """Get the value associated with a sequence"""
+        return self.sequence_values.get(sequence)

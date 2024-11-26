@@ -12,72 +12,38 @@ from .sgppm_config import SGPPMConfig
 @dataclass
 class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel):
     config: SGPPMConfig = field(default_factory=SGPPMConfig)
-    debug: bool = True
+    debug: bool = False
 
-    def pick_peaks(self, chromatograms: Union[List[Chromatogram], Chromatogram]) -> Union[List[Chromatogram], Chromatogram]:
-        if isinstance(chromatograms, Chromatogram):
-            chromatograms = [chromatograms]
+    def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
+        """Override base class peak finding to incorporate search masks"""
+        for chrom in chromatograms:
+            # Store original corrected signal
+            original_y_corrected = chrom.y_corrected.copy()
 
-        # Create local hierarchy and elution times for this set of chromatograms
-        sequence_hierarchy = Hierarchy(null_element=BuildingBlock(name='Null'))
-        elution_times: Dict[Tuple[BuildingBlock, ...], float] = {}
-        peak_intensities: Dict[Tuple[BuildingBlock, ...], float] = {}
-
-        # Generate mapping of building block tuples to chromatograms
-        sequence_to_chrom = {
-            tuple(chrom.building_blocks): chrom for chrom in chromatograms
-        }
-
-        # Get base sequence (one with most non-Null building blocks)
-        base_sequence = max(
-            sequence_to_chrom.keys(),
-            key=lambda seq: sum(1 for x in seq if x.name != 'Null')
-        )
-
-        # Generate all valid sequences and add to hierarchy
-        all_sequences = sequence_hierarchy.generate_all_descendants(base_sequence)
-        all_sequences.append(base_sequence)
-        sequence_hierarchy.add_sequences(all_sequences)
-
-        # Process chromatograms by level, starting from simplest (most Nulls)
-        results = []
-        for level in range(len(base_sequence) + 1):
-            sequences = sequence_hierarchy.get_sequences_by_level(level)
-            level_chromatograms = [
-                sequence_to_chrom[seq] for seq in sequences
-                if seq in sequence_to_chrom
-            ]
-
-            if level_chromatograms:
+            # Apply search mask if it exists
+            if hasattr(chrom, 'search_mask'):
                 if self.debug:
-                    print(f"\nProcessing Level {level} Sequences:")
+                    print(f"Applying search mask: {np.sum(chrom.search_mask)} points in search window")
+                chrom.y_corrected = np.where(chrom.search_mask, original_y_corrected, 0)
 
-                # Process this level's chromatograms
-                processed_chroms = self._process_level(
-                    level_chromatograms,
-                    level,
-                    sequence_hierarchy,
-                    elution_times,
-                    peak_intensities
-                )
+            # Call parent class peak finding
+            chroms = super()._find_peaks([chrom])
 
-                # Update elution times and intensities
-                for chrom in processed_chroms:
-                    sequence = tuple(chrom.building_blocks)
-                    sequence_str = '-'.join(bb.name for bb in sequence)
+            # Restore original signal
+            chrom.y_corrected = original_y_corrected
 
-                    if chrom.picked_peak:
-                        elution_times[sequence] = chrom.picked_peak.peak_metrics['time']
-                        peak_intensities[sequence] = chrom.picked_peak.peak_metrics['height']
-                        if self.debug:
-                            print(f"Sequence: {sequence_str}, Peak picked at time {chrom.picked_peak.peak_metrics['time']:.2f} with height {chrom.picked_peak.peak_metrics['height']:.2f}")
-                    else:
-                        if self.debug:
-                            print(f"Sequence: {sequence_str}, No peak picked")
+            if self.debug and not chrom.peaks and hasattr(chrom, 'search_mask'):
+                print("No peaks found in search window")
+                print(f"Search window contains signal: {np.any(chrom.y_corrected[chrom.search_mask] > 0)}")
+                if np.any(chrom.y_corrected > 0):
+                    max_val = np.max(chrom.y_corrected)
+                    max_masked = np.max(chrom.y_corrected[chrom.search_mask]) if np.any(chrom.search_mask) else 0
+                    print(f"Max signal overall: {max_val:.2f}")
+                    print(f"Max signal in search window: {max_masked:.2f}")
+                    print(f"Search rel height threshold: {self.config.search_rel_height}")
+                    print(f"Required height for detection: {max_val * self.config.search_rel_height:.2f}")
 
-                results.extend(processed_chroms)
-
-        return results[0] if len(chromatograms) == 1 else results
+        return chromatograms
 
     def _process_level(
         self,
@@ -94,12 +60,16 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
         # Analyze signal properties
         for chrom in chromatograms:
             chrom.signal_metrics = ChromatogramAnalyzer.analyze_chromatogram(chrom)
+            if self.debug:
+                sequence_str = '-'.join(bb.name for bb in chrom.building_blocks)
+                print(f"\nProcessing {sequence_str}")
+                print(f"Signal range: {np.min(chrom.y_corrected):.2f} to {np.max(chrom.y_corrected):.2f}")
 
         # For sequences with non-zero level, use information from simpler sequences
         if level > 0:
             self._adjust_search_parameters(chromatograms, sequence_hierarchy, elution_times)
 
-        # Find peaks with adjusted parameters
+        # Find peaks
         chromatograms = self._find_peaks(chromatograms)
 
         # Select peaks considering hierarchy constraints
@@ -154,9 +124,12 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
                 chrom.search_mask = np.zeros_like(chrom.y, dtype=bool)
                 chrom.search_mask[min_idx:max_idx] = True
 
-                # Zero out signal outside search window
-                masked_signal = np.where(chrom.search_mask, chrom.y_corrected, 0)
-                chrom.y_corrected = masked_signal
+                if self.debug:
+                    print(f"Search window covers {np.sum(chrom.search_mask)} points")
+                    if np.any(chrom.y_corrected[chrom.search_mask] > 0):
+                        print(f"Maximum signal in search window: {np.max(chrom.y_corrected[chrom.search_mask]):.2f}")
+                    else:
+                        print("No signal in search window")
 
     def _hierarchical_peak_selection(
         self,
@@ -252,19 +225,3 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
                     print("\nNo valid peaks found after applying all criteria")
 
         return chromatograms
-
-    def _update_peak_constraints(self, chrom: Chromatogram, search_window: Tuple[float, float]):
-        """
-        Update the peak finding constraints based on the calculated search window.
-
-        Args:
-            chrom: Chromatogram to update
-            search_window: Tuple of (min_time, max_time) for peak search
-        """
-        # Find indices corresponding to the search window times
-        min_time_idx = np.searchsorted(chrom.x, search_window[0])
-        max_time_idx = np.searchsorted(chrom.x, search_window[1])
-
-        # Create a mask for the valid search region
-        chrom.search_window = np.zeros_like(chrom.y, dtype=bool)
-        chrom.search_window[min_time_idx:max_time_idx] = True

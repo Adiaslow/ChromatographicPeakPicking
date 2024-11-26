@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 import numpy as np
-from typing import List, Union, Dict, Tuple
+from scipy.signal import find_peaks, peak_widths
+from typing import List, Dict, Tuple
 
 from .building_block import BuildingBlock
 from .chromatogram import Chromatogram

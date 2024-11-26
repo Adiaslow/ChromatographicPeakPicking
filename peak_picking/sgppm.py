@@ -17,6 +17,7 @@ from .sgppm_config import SGPPMConfig
 @dataclass
 class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
     config: SGPPMConfig = SGPPMConfig()
+    debug: bool = True
 
     def pick_peaks(self, chromatograms: Union[List[Chromatogram], Chromatogram]) -> Union[List[Chromatogram], Chromatogram]:
         if isinstance(chromatograms, Chromatogram):
@@ -41,36 +42,49 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         return chromatograms
 
     def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
+        """Override to add debugging of base class peak finding"""
         for chrom in chromatograms:
-            search_peaks, properties = find_peaks(chrom.y_corrected,
-                height=chrom.y.max() * self.config.search_rel_height,
-                rel_height=self.config.search_rel_height)
+            if self.debug:
+                print(f"\nFinding peaks for {'-'.join(bb.name for bb in chrom.building_blocks)}")
+                print(f"Raw signal range: {np.min(chrom.y):.2f} to {np.max(chrom.y):.2f}")
+                print(f"Corrected signal range: {np.min(chrom.y_corrected):.2f} to {np.max(chrom.y_corrected):.2f}")
 
-            fitted_peaks = []
-            for idx, peak_idx in enumerate(search_peaks):
-                peak_obj = Peak()
-                width_points = peak_widths(chrom.y_corrected, [peak_idx], rel_height=0.5)
-                left_idx = int(width_points[2][0])
-                right_idx = int(width_points[3][0])
+                # Debug the peak finding parameters
+                height_threshold = chrom.y.max() * self.config.search_rel_height
+                print(f"Search height threshold: {height_threshold:.2f}")
+                print(f"Search relative height: {self.config.search_rel_height}")
 
-                peak_obj.peak_metrics.update({
-                    'index': peak_idx,
-                    'time': chrom.x[peak_idx],
-                    'height': chrom.y_corrected[peak_idx],
-                    'left_base_index': left_idx,
-                    'right_base_index': right_idx,
-                    'left_base_time': chrom.x[left_idx],
-                    'right_base_time': chrom.x[right_idx],
-                    'width': chrom.x[right_idx] - chrom.x[left_idx]
-                })
+                # Find peaks with scipy directly to debug
+                peaks, properties = find_peaks(
+                    chrom.y_corrected,
+                    height=height_threshold,
+                    rel_height=self.config.search_rel_height
+                )
+                print(f"Initial peaks found: {len(peaks)}")
+                if len(peaks) > 0:
+                    print("Peak heights:", [chrom.y_corrected[p] for p in peaks])
 
-                peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
-                if peak_obj.peak_metrics.get('fit_stddev', float('inf')) < self.config.stddev_threshold:
-                    fitted_peaks.append(peak_obj)
-                peak_obj = PeakAnalyzer.analyze_peak(peak_obj, chrom)
+                    # Debug peak widths
+                    widths = peak_widths(chrom.y_corrected, peaks, rel_height=0.5)
+                    print("Peak widths:", widths[0])
 
-            chrom.peaks = fitted_peaks
+            # Call the parent class implementation
+            chroms = super()._find_peaks([chrom])
+
+            if self.debug:
+                if chrom.peaks:
+                    print(f"After Gaussian fitting - kept {len(chrom.peaks)} peaks:")
+                    for peak in chrom.peaks:
+                        print(f"  Time: {peak.peak_metrics['time']:.2f}")
+                        print(f"  Height: {peak.peak_metrics['height']:.2f}")
+                        print(f"  Width: {peak.peak_metrics['width']:.2f}")
+                        print(f"  StdDev: {peak.peak_metrics.get('fit_stddev', 'N/A')}")
+                        print(f"  Residuals: {peak.peak_metrics.get('gaussian_residuals', 'N/A')}")
+                else:
+                    print("No peaks passed Gaussian fitting")
+
         return chromatograms
+
 
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
         """
@@ -223,7 +237,27 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
         return interp_func(x)
 
     def _select_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
+        """Override to add debugging of base class peak selection"""
         for chrom in chromatograms:
+            if self.debug:
+                print(f"\nSelecting peaks for {'-'.join(bb.name for bb in chrom.building_blocks)}")
+                if chrom.peaks:
+                    max_y = np.max(chrom.y_corrected)
+                    print(f"Number of peaks to consider: {len(chrom.peaks)}")
+                    print(f"Maximum signal: {max_y:.2f}")
+                    print(f"Height threshold: {self.config.height_threshold}")
+                    print(f"Relative height threshold: {self.config.pick_rel_height}")
+                    for peak in chrom.peaks:
+                        height = peak.peak_metrics['height']
+                        print(f"\nEvaluating peak:")
+                        print(f"  Time: {peak.peak_metrics['time']:.2f}")
+                        print(f"  Height: {height:.2f}")
+                        print(f"  Meets absolute threshold: {height >= self.config.height_threshold}")
+                        print(f"  Meets relative threshold: {height >= max_y * self.config.pick_rel_height}")
+                else:
+                    print("No peaks to select from")
+
+            # Process peaks normally
             if not chrom.peaks:
                 continue
 
@@ -235,9 +269,17 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
                 if (peak_height >= self.config.height_threshold and
                     peak_height >= max_y * self.config.pick_rel_height):
                     valid_peaks.append(peak)
+                    if self.debug:
+                        print(f"Peak at time {peak.peak_metrics['time']:.2f} accepted")
 
             if valid_peaks:
                 best_peak = max(valid_peaks, key=lambda p: p.peak_metrics['time'])
                 chrom.picked_peak = best_peak
+                if self.debug:
+                    print(f"Selected peak at time {best_peak.peak_metrics['time']:.2f}")
+            else:
+                if self.debug:
+                    print("No peaks met selection criteria")
+                chrom.picked_peak = None
 
         return chromatograms

@@ -68,6 +68,137 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
 
         return chromatograms
 
+    def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
+        """
+        Fit a Gaussian curve to peak data with interpolation for smoother results.
+        """
+        if self.debug:
+            print(f"\nFitting peak at time {peak.peak_metrics['time']:.2f}")
+            print(f"Initial height: {peak.peak_metrics['height']:.2f}")
+            print(f"Initial width: {peak.peak_metrics['width']:.2f}")
+
+        left_idx = max(0, int(peak.peak_metrics['left_base_index']))
+        right_idx = min(len(x) - 1, int(peak.peak_metrics['right_base_index']))
+
+        section_x = x[left_idx:right_idx + 1]
+        section_y = y[left_idx:right_idx + 1]
+
+        if len(section_x) < 3:
+            if self.debug:
+                print("Not enough points for fitting")
+            peak.peak_metrics.update({
+                'gaussian_residuals': float('inf'),
+                'fit_error': 'Not enough points for fitting'
+            })
+            return peak
+
+        try:
+            # Create higher resolution x-values for interpolation
+            interp_factor = 10
+            x_interp = np.linspace(section_x[0], section_x[-1], len(section_x) * interp_factor)
+
+            # Smooth the section data
+            window_length = min(7, len(section_y) - (len(section_y) % 2 + 1))
+            if window_length >= 3:
+                section_y_smooth = savgol_filter(section_y, window_length, 2)
+            else:
+                section_y_smooth = section_y
+
+            if self.debug:
+                print(f"Window length for smoothing: {window_length}")
+
+            # Interpolate the smoothed data
+            interp_func = interp1d(section_x, section_y_smooth, kind='cubic', bounds_error=False, fill_value=0)
+            y_interp = interp_func(x_interp)
+
+            # Get peak properties from interpolated data
+            peak_idx = np.argmax(y_interp)
+            height = np.max(y_interp)
+            mean = x_interp[peak_idx]
+
+            # Width estimation using interpolated data
+            peak_mask = y_interp > (height * 0.1)
+            peak_indices = np.where(peak_mask)[0]
+            if len(peak_indices) >= 2:
+                width = (x_interp[peak_indices[-1]] - x_interp[peak_indices[0]]) / 4
+            else:
+                width = (section_x[-1] - section_x[0]) / 6
+
+            if self.debug:
+                print(f"Initial fit parameters:")
+                print(f"Height: {height:.2f}")
+                print(f"Mean: {mean:.2f}")
+                print(f"Width: {width:.4f}")
+
+            # Initial parameters with adjusted bounds
+            p0 = [height, mean, width]
+            bounds = (
+                [height * 0.7, x_interp[0], width * 0.3],
+                [height * 1.3, x_interp[-1], width * 2.0]
+            )
+
+            if self.debug:
+                print("Fit bounds:")
+                print(f"Height: [{bounds[0][0]:.2f}, {bounds[1][0]:.2f}]")
+                print(f"Mean: [{bounds[0][1]:.2f}, {bounds[1][1]:.2f}]")
+                print(f"Width: [{bounds[0][2]:.4f}, {bounds[1][2]:.4f}]")
+
+            # Create weights for interpolated data
+            weights = np.ones_like(x_interp)
+            peak_region = (x_interp > mean - width * 2) & (x_interp < mean + width * 2)
+            weights[peak_region] = 3.0
+            weights[y_interp < height * 0.1] = 0.5
+
+            # Fit using interpolated data
+            popt, _ = curve_fit(
+                gaussian_curve,
+                x_interp,
+                y_interp,
+                p0=p0,
+                bounds=bounds,
+                sigma=1/weights,
+                maxfev=5000,
+                method='trf'
+            )
+
+            if self.debug:
+                print("Final fit parameters:")
+                print(f"Amplitude: {popt[0]:.2f}")
+                print(f"Mean: {popt[1]:.2f}")
+                print(f"Stddev: {popt[2]:.4f}")
+                print(f"Stddev threshold: {self.config.stddev_threshold}")
+
+            # Calculate residuals using original data points
+            section_fit = gaussian_curve(section_x, *popt)
+            residuals = np.sum((section_y - section_fit)**2)
+            normalized_residuals = residuals / (height * len(section_y))
+
+            peak.peak_metrics.update({
+                'gaussian_residuals': normalized_residuals,
+                'fit_amplitude': popt[0],
+                'fit_mean': popt[1],
+                'fit_stddev': popt[2],
+                'approximation_curve': self._generate_interpolated_curve(x, x_interp, popt, left_idx, right_idx)
+            })
+
+            if self.debug:
+                print(f"Normalized residuals: {normalized_residuals:.4f}")
+                if popt[2] >= self.config.stddev_threshold:
+                    print(f"Peak rejected: stddev {popt[2]:.4f} >= threshold {self.config.stddev_threshold}")
+                else:
+                    print("Peak accepted")
+
+        except (RuntimeError, ValueError) as e:
+            if self.debug:
+                print(f"Fitting error: {str(e)}")
+            peak.peak_metrics.update({
+                'gaussian_residuals': float('inf'),
+                'fit_error': str(e)
+            })
+
+        return peak
+
+
     def _process_level(
         self,
         chromatograms: List[Chromatogram],

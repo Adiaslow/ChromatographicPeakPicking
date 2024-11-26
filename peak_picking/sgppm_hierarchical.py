@@ -8,6 +8,7 @@ from typing import List, Dict, Tuple
 from .building_block import BuildingBlock
 from .chromatogram import Chromatogram
 from .chromatogram_analyzer import ChromatogramAnalyzer
+from .gaussian_curve import gaussian_curve
 from .hierarchy import Hierarchy
 from .peak import Peak
 from .peak_analyzer import PeakAnalyzer

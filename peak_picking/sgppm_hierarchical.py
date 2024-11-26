@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import numpy as np
-from typing import List, Union, Dict, Tuple
+from typing import List, Dict, Tuple
 
 from .building_block import BuildingBlock
 from .chromatogram import Chromatogram
@@ -21,10 +21,10 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
             original_y_corrected = chrom.y_corrected.copy()
 
             # Apply search mask if it exists
-            if hasattr(chrom, 'search_mask'):
+            if hasattr(chrom, 'search_window'):
                 if self.debug:
-                    print(f"Applying search mask: {np.sum(chrom.search_mask)} points in search window")
-                chrom.y_corrected = np.where(chrom.search_mask, original_y_corrected, 0)
+                    print(f"Applying search mask: {np.sum(chrom.search_window)} points in search window")
+                chrom.y_corrected = np.where(chrom.search_window, original_y_corrected, 0)
 
             # Call parent class peak finding
             chroms = super()._find_peaks([chrom])
@@ -32,12 +32,12 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
             # Restore original signal
             chrom.y_corrected = original_y_corrected
 
-            if self.debug and not chrom.peaks and hasattr(chrom, 'search_mask'):
+            if self.debug and not chrom.peaks and hasattr(chrom, 'search_window'):
                 print("No peaks found in search window")
-                print(f"Search window contains signal: {np.any(chrom.y_corrected[chrom.search_mask] > 0)}")
+                print(f"Search window contains signal: {np.any(chrom.y_corrected[chrom.search_window] > 0)}")
                 if np.any(chrom.y_corrected > 0):
                     max_val = np.max(chrom.y_corrected)
-                    max_masked = np.max(chrom.y_corrected[chrom.search_mask]) if np.any(chrom.search_mask) else 0
+                    max_masked = np.max(chrom.y_corrected[chrom.search_window]) if np.any(chrom.search_window) else 0
                     print(f"Max signal overall: {max_val:.2f}")
                     print(f"Max signal in search window: {max_masked:.2f}")
                     print(f"Search rel height threshold: {self.config.search_rel_height}")
@@ -121,13 +121,13 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
                 max_idx = len(chrom.x)
 
                 # Create search mask
-                chrom.search_mask = np.zeros_like(chrom.y, dtype=bool)
-                chrom.search_mask[min_idx:max_idx] = True
+                chrom.search_window = np.zeros_like(chrom.y, dtype=bool)
+                chrom.search_window[min_idx:max_idx] = True
 
                 if self.debug:
-                    print(f"Search window covers {np.sum(chrom.search_mask)} points")
-                    if np.any(chrom.y_corrected[chrom.search_mask] > 0):
-                        print(f"Maximum signal in search window: {np.max(chrom.y_corrected[chrom.search_mask]):.2f}")
+                    print(f"Search window covers {np.sum(chrom.search_window)} points")
+                    if np.any(chrom.y_corrected[chrom.search_window] > 0):
+                        print(f"Maximum signal in search window: {np.max(chrom.y_corrected[chrom.search_window]):.2f}")
                     else:
                         print("No signal in search window")
 

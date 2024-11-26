@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Dict, Generic, List, Optional, Set, TypeVar, Tuple
 from itertools import combinations
-
+from networkx import DiGraph
 from .building_block import BuildingBlock
 
 T = TypeVar('T')  # Type of elements in the sequence
@@ -140,3 +140,102 @@ class Hierarchy(Generic[T, N, V]):
     def get_sequence_value(self, sequence: Tuple[BuildingBlock, ...]) -> Optional[V]:
         """Get the value associated with a sequence"""
         return self.sequence_values.get(sequence)
+
+    def visualize_hierarchy(self, figsize=(12, 8), node_size=2000,
+                           with_values: bool = False,
+                           save_path: Optional[str] = None,
+                           color_scheme: Optional[Dict[int, str]] = None) -> None:
+        """
+        Visualize a Hierarchy object using NetworkX and Matplotlib.
+
+        Args:
+            hierarchy: Hierarchy object to visualize
+            figsize: Tuple of (width, height) for the figure
+            node_size: Size of nodes in the visualization
+            with_values: Whether to display sequence values in nodes
+            save_path: Optional path to save the visualization
+            color_scheme: Optional dictionary mapping levels to colors
+        """
+        # Create directed graph
+        G = nx.DiGraph()
+
+        # Get all sequences grouped by level
+        max_level = max(hierarchy.levels.keys())
+
+        # Default color scheme if none provided
+        if color_scheme is None:
+            colors = list(mcolors.TABLEAU_COLORS.values())
+            color_scheme = {
+                level: colors[i % len(colors)]
+                for i, level in enumerate(range(max_level + 1))
+            }
+
+        # Calculate positions for nodes
+        pos = {}
+        for level in range(max_level + 1):
+            sequences = hierarchy.get_sequences_by_level(level)
+            if not sequences:
+                continue
+
+            # Calculate y-coordinate based on level
+            y = (max_level - level) / max_level
+
+            # Position nodes horizontally
+            for i, seq in enumerate(sorted(sequences)):
+                x = (i + 1) / (len(sequences) + 1)
+                pos[seq] = (x, y)
+
+                # Create node label
+                if with_values:
+                    value = hierarchy.get_sequence_value(seq)
+                    label = f"{'.'.join(str(x) for x in seq)}\n{value:.2f}" if value is not None else '.'.join(str(x) for x in seq)
+                else:
+                    label = '.'.join(str(x) for x in seq)
+
+                # Add node with attributes
+                G.add_node(seq,
+                          label=label,
+                          level=level,
+                          color=color_scheme[level])
+
+        # Add edges
+        for seq in G.nodes():
+            descendants = hierarchy.get_descendants(seq)
+            for desc in descendants:
+                G.add_edge(seq, desc)
+
+        # Create visualization
+        plt.figure(figsize=figsize)
+
+        # Draw nodes
+        node_colors = [G.nodes[node]['color'] for node in G.nodes()]
+        labels = {node: G.nodes[node]['label'] for node in G.nodes()}
+
+        nx.draw(G, pos,
+                with_labels=True,
+                labels=labels,
+                node_color=node_colors,
+                node_size=node_size,
+                arrowsize=20,
+                font_size=10,
+                font_weight='bold',
+                edge_color='gray',
+                arrows=True)
+
+        # Add legend for levels
+        legend_elements = [plt.Line2D([0], [0], marker='o', color='w',
+                                     markerfacecolor=color,
+                                     markersize=10,
+                                     label=f'Level {level}')
+                          for level, color in color_scheme.items()]
+        plt.legend(handles=legend_elements, loc='center left', bbox_to_anchor=(1, 0.5))
+
+        plt.title("Hierarchy Visualization")
+
+        # Save or show
+        if save_path:
+            plt.savefig(save_path, bbox_inches='tight')
+        else:
+            plt.show()
+
+        plt.close()

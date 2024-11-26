@@ -19,47 +19,49 @@ class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel)
         for chrom in chromatograms:
             if self.debug:
                 print(f"\nFinding peaks for sequence: {'-'.join(bb.name for bb in chrom.building_blocks)}")
-                print(f"Original signal range: {np.min(chrom.y_corrected):.2f} to {np.max(chrom.y_corrected):.2f}")
+                print(f"Signal range: {np.min(chrom.y):.2f} to {np.max(chrom.y):.2f}")
+                print(f"Corrected signal range: {np.min(chrom.y_corrected):.2f} to {np.max(chrom.y_corrected):.2f}")
+                print(f"Height threshold: {chrom.y.max() * self.config.search_rel_height:.2f}")
 
-            # For level 0, use base class peak finding directly
-            if all(bb.name == 'Null' for bb in chrom.building_blocks):
-                if self.debug:
-                    print("Level 0 sequence - using full signal range")
-                chroms = super()._find_peaks([chrom])
-                continue
-
-            # For higher levels, apply search mask if it exists
-            search_mask = getattr(chrom, 'search_mask', None)
-            if search_mask is not None and np.any(search_mask):
-                if self.debug:
-                    print(f"Search mask has {np.sum(search_mask)} points")
-                    masked_signal = np.where(search_mask, chrom.y_corrected, 0)
-                    if np.any(masked_signal > 0):
-                        print(f"Signal in search window: {np.min(masked_signal[masked_signal > 0]):.2f} to {np.max(masked_signal):.2f}")
-                    else:
-                        print("No signal in search window")
-
-                # Temporarily apply mask
-                original_signal = chrom.y_corrected.copy()
-                chrom.y_corrected = np.where(search_mask, original_signal, 0)
-
-                # Find peaks
-                chroms = super()._find_peaks([chrom])
-
-                # Restore original signal
-                chrom.y_corrected = original_signal
-            else:
-                if self.debug:
-                    print("No valid search mask - using full signal range")
-                chroms = super()._find_peaks([chrom])
+            # Use scipy.signal.find_peaks with original signal height reference
+            search_peaks, properties = find_peaks(
+                chrom.y_corrected,
+                height=chrom.y.max() * self.config.search_rel_height,
+                rel_height=self.config.search_rel_height
+            )
 
             if self.debug:
-                if chrom.peaks:
-                    print(f"Found {len(chrom.peaks)} peaks")
-                    for peak in chrom.peaks:
-                        print(f"Peak at time {peak.peak_metrics['time']:.2f} with height {peak.peak_metrics['height']:.2f}")
-                else:
-                    print("No peaks found")
+                print(f"Found {len(search_peaks)} initial peaks")
+
+            fitted_peaks = []
+            for idx, peak_idx in enumerate(search_peaks):
+                peak_obj = Peak()
+                width_points = peak_widths(chrom.y_corrected, [peak_idx], rel_height=0.5)
+                left_idx = int(width_points[2][0])
+                right_idx = int(width_points[3][0])
+
+                peak_obj.peak_metrics.update({
+                    'index': peak_idx,
+                    'time': chrom.x[peak_idx],
+                    'height': chrom.y_corrected[peak_idx],
+                    'left_base_index': left_idx,
+                    'right_base_index': right_idx,
+                    'left_base_time': chrom.x[left_idx],
+                    'right_base_time': chrom.x[right_idx],
+                    'width': chrom.x[right_idx] - chrom.x[left_idx]
+                })
+
+                peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
+                if peak_obj.peak_metrics.get('fit_stddev', float('inf')) < self.config.stddev_threshold:
+                    fitted_peaks.append(peak_obj)
+                    if self.debug:
+                        print(f"Peak at time {peak_obj.peak_metrics['time']:.2f} passed fitting")
+                peak_obj = PeakAnalyzer.analyze_peak(peak_obj, chrom)
+
+            chrom.peaks = fitted_peaks
+
+            if self.debug:
+                print(f"Final peak count: {len(fitted_peaks)}")
 
         return chromatograms
 

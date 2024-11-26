@@ -41,156 +41,138 @@ class SimpleGaussianPeakPickingModel(PeakPicker[SGPPMConfig]):
             )
         return chromatograms
 
-    from dataclasses import dataclass, field
-    import numpy as np
-    from typing import List, Union, Dict, Tuple
-    from scipy.signal import find_peaks, peak_widths
+    def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
+        """Modified peak finding with detailed failure analysis"""
+        for chrom in chromatograms:
+            sequence_str = '-'.join(bb.name for bb in chrom.building_blocks)
+            if self.debug:
+                print(f"\nFinding peaks for sequence: {sequence_str}")
+                print(f"Signal range: {np.min(chrom.y_corrected):.2f} to {np.max(chrom.y_corrected):.2f}")
+                print(f"Config parameters:")
+                print(f"  Height threshold: {self.config.height_threshold}")
+                print(f"  Width min/max: {self.config.width_min}/{self.config.width_max}")
+                print(f"  Gaussian residuals threshold: {self.config.gaussian_residuals_threshold}")
+                print(f"  StdDev threshold: {self.config.stddev_threshold}")
 
-    from .building_block import BuildingBlock
-    from .chromatogram import Chromatogram
-    from .chromatogram_analyzer import ChromatogramAnalyzer
-    from .hierarchy import Hierarchy
-    from .sgppm import SimpleGaussianPeakPickingModel
-    from .sgppm_config import SGPPMConfig
-    from .peak import Peak
+            # Find initial peaks
+            search_peaks, properties = find_peaks(
+                chrom.y_corrected,
+                height=chrom.y.max() * self.config.search_rel_height,
+                rel_height=self.config.search_rel_height,
+                distance=int(len(chrom.x) * self.config.min_distance_factor)
+            )
 
-    @dataclass
-    class HierarchicalSimpleGaussianPeakPickingModel(SimpleGaussianPeakPickingModel):
-        config: SGPPMConfig = field(default_factory=SGPPMConfig)
-        debug: bool = False
+            if self.debug:
+                print(f"\nFound {len(search_peaks)} initial peaks")
 
-        def _find_peaks(self, chromatograms: List[Chromatogram]) -> List[Chromatogram]:
-            """Modified peak finding with detailed failure analysis"""
-            for chrom in chromatograms:
-                sequence_str = '-'.join(bb.name for bb in chrom.building_blocks)
+            fitted_peaks = []
+            for peak_idx in search_peaks:
                 if self.debug:
-                    print(f"\nFinding peaks for sequence: {sequence_str}")
-                    print(f"Signal range: {np.min(chrom.y_corrected):.2f} to {np.max(chrom.y_corrected):.2f}")
-                    print(f"Config parameters:")
-                    print(f"  Height threshold: {self.config.height_threshold}")
-                    print(f"  Width min/max: {self.config.width_min}/{self.config.width_max}")
-                    print(f"  Gaussian residuals threshold: {self.config.gaussian_residuals_threshold}")
-                    print(f"  StdDev threshold: {self.config.stddev_threshold}")
+                    print(f"\nAnalyzing peak at index {peak_idx} (time {chrom.x[peak_idx]:.2f})")
+                    print(f"Initial height: {chrom.y_corrected[peak_idx]:.2f}")
 
-                # Find initial peaks
-                search_peaks, properties = find_peaks(
-                    chrom.y_corrected,
-                    height=chrom.y.max() * self.config.search_rel_height,
-                    rel_height=self.config.search_rel_height,
-                    distance=int(len(chrom.x) * self.config.min_distance_factor)
-                )
+                # Create peak object
+                peak_obj = Peak()
+
+                # Find peak boundaries
+                half_height = chrom.y_corrected[peak_idx] / 2
+                left_idx = peak_idx
+                while left_idx > 0 and chrom.y_corrected[left_idx - 1] > half_height:
+                    left_idx -= 1
+
+                right_idx = peak_idx
+                while right_idx < len(chrom.y_corrected) - 1 and chrom.y_corrected[right_idx + 1] > half_height:
+                    right_idx += 1
+
+                # Ensure minimum width
+                min_points = 3
+                if right_idx - left_idx < min_points:
+                    padding = (min_points - (right_idx - left_idx)) // 2
+                    left_idx = max(0, left_idx - padding)
+                    right_idx = min(len(chrom.y_corrected) - 1, right_idx + padding)
 
                 if self.debug:
-                    print(f"\nFound {len(search_peaks)} initial peaks")
+                    print(f"Peak boundaries:")
+                    print(f"  Left idx/time: {left_idx}/{chrom.x[left_idx]:.2f}")
+                    print(f"  Right idx/time: {right_idx}/{chrom.x[right_idx]:.2f}")
+                    print(f"  Points in peak: {right_idx - left_idx + 1}")
 
-                fitted_peaks = []
-                for peak_idx in search_peaks:
+                # Calculate peak metrics
+                width = chrom.x[right_idx] - chrom.x[left_idx]
+                peak_obj.peak_metrics.update({
+                    'index': peak_idx,
+                    'time': chrom.x[peak_idx],
+                    'height': chrom.y_corrected[peak_idx],
+                    'left_base_index': left_idx,
+                    'right_base_index': right_idx,
+                    'left_base_time': chrom.x[left_idx],
+                    'right_base_time': chrom.x[right_idx],
+                    'width': width
+                })
+
+                if self.debug:
+                    print(f"Initial metrics:")
+                    print(f"  Height: {peak_obj.peak_metrics['height']:.2f}")
+                    print(f"  Width: {width:.4f}")
+
+                # Check basic width criteria before fitting
+                if width < self.config.width_min:
                     if self.debug:
-                        print(f"\nAnalyzing peak at index {peak_idx} (time {chrom.x[peak_idx]:.2f})")
-                        print(f"Initial height: {chrom.y_corrected[peak_idx]:.2f}")
+                        print(f"Peak rejected: Width {width:.4f} < minimum {self.config.width_min}")
+                    continue
 
-                    # Create peak object
-                    peak_obj = Peak()
-
-                    # Find peak boundaries
-                    half_height = chrom.y_corrected[peak_idx] / 2
-                    left_idx = peak_idx
-                    while left_idx > 0 and chrom.y_corrected[left_idx - 1] > half_height:
-                        left_idx -= 1
-
-                    right_idx = peak_idx
-                    while right_idx < len(chrom.y_corrected) - 1 and chrom.y_corrected[right_idx + 1] > half_height:
-                        right_idx += 1
-
-                    # Ensure minimum width
-                    min_points = 3
-                    if right_idx - left_idx < min_points:
-                        padding = (min_points - (right_idx - left_idx)) // 2
-                        left_idx = max(0, left_idx - padding)
-                        right_idx = min(len(chrom.y_corrected) - 1, right_idx + padding)
-
+                if width > self.config.width_max:
                     if self.debug:
-                        print(f"Peak boundaries:")
-                        print(f"  Left idx/time: {left_idx}/{chrom.x[left_idx]:.2f}")
-                        print(f"  Right idx/time: {right_idx}/{chrom.x[right_idx]:.2f}")
-                        print(f"  Points in peak: {right_idx - left_idx + 1}")
+                        print(f"Peak rejected: Width {width:.4f} > maximum {self.config.width_max}")
+                    continue
 
-                    # Calculate peak metrics
-                    width = chrom.x[right_idx] - chrom.x[left_idx]
-                    peak_obj.peak_metrics.update({
-                        'index': peak_idx,
-                        'time': chrom.x[peak_idx],
-                        'height': chrom.y_corrected[peak_idx],
-                        'left_base_index': left_idx,
-                        'right_base_index': right_idx,
-                        'left_base_time': chrom.x[left_idx],
-                        'right_base_time': chrom.x[right_idx],
-                        'width': width
-                    })
+                # Fit Gaussian
+                peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
 
-                    if self.debug:
-                        print(f"Initial metrics:")
-                        print(f"  Height: {peak_obj.peak_metrics['height']:.2f}")
-                        print(f"  Width: {width:.4f}")
-
-                    # Check basic width criteria before fitting
-                    if width < self.config.width_min:
-                        if self.debug:
-                            print(f"Peak rejected: Width {width:.4f} < minimum {self.config.width_min}")
-                        continue
-
-                    if width > self.config.width_max:
-                        if self.debug:
-                            print(f"Peak rejected: Width {width:.4f} > maximum {self.config.width_max}")
-                        continue
-
-                    # Fit Gaussian
-                    peak_obj = self._fit_gaussian(chrom.x, chrom.y_corrected, peak_obj)
-
-                    if self.debug:
-                        print("\nGaussian fit results:")
-                        if 'fit_error' in peak_obj.peak_metrics:
-                            print(f"Fitting error: {peak_obj.peak_metrics['fit_error']}")
-                        else:
-                            print(f"  Amplitude: {peak_obj.peak_metrics.get('fit_amplitude', 'N/A')}")
-                            print(f"  Mean: {peak_obj.peak_metrics.get('fit_mean', 'N/A')}")
-                            print(f"  StdDev: {peak_obj.peak_metrics.get('fit_stddev', 'N/A')}")
-                            print(f"  Residuals: {peak_obj.peak_metrics.get('gaussian_residuals', 'N/A')}")
-
-                    # Validate the fit
+                if self.debug:
+                    print("\nGaussian fit results:")
                     if 'fit_error' in peak_obj.peak_metrics:
-                        if self.debug:
-                            print("Peak rejected: Fitting failed")
-                        continue
+                        print(f"Fitting error: {peak_obj.peak_metrics['fit_error']}")
+                    else:
+                        print(f"  Amplitude: {peak_obj.peak_metrics.get('fit_amplitude', 'N/A')}")
+                        print(f"  Mean: {peak_obj.peak_metrics.get('fit_mean', 'N/A')}")
+                        print(f"  StdDev: {peak_obj.peak_metrics.get('fit_stddev', 'N/A')}")
+                        print(f"  Residuals: {peak_obj.peak_metrics.get('gaussian_residuals', 'N/A')}")
 
-                    residuals = peak_obj.peak_metrics.get('gaussian_residuals', float('inf'))
-                    if residuals >= self.config.gaussian_residuals_threshold:
-                        if self.debug:
-                            print(f"Peak rejected: Residuals {residuals:.4f} >= threshold {self.config.gaussian_residuals_threshold}")
-                        continue
-
-                    stddev = peak_obj.peak_metrics.get('fit_stddev', float('inf'))
-                    if stddev >= self.config.stddev_threshold:
-                        if self.debug:
-                            print(f"Peak rejected: StdDev {stddev:.4f} >= threshold {self.config.stddev_threshold}")
-                        continue
-
-                    # Peak passed all criteria
+                # Validate the fit
+                if 'fit_error' in peak_obj.peak_metrics:
                     if self.debug:
-                        print("Peak accepted: Passed all criteria")
-                    fitted_peaks.append(peak_obj)
+                        print("Peak rejected: Fitting failed")
+                    continue
 
-                chrom.peaks = fitted_peaks
+                residuals = peak_obj.peak_metrics.get('gaussian_residuals', float('inf'))
+                if residuals >= self.config.gaussian_residuals_threshold:
+                    if self.debug:
+                        print(f"Peak rejected: Residuals {residuals:.4f} >= threshold {self.config.gaussian_residuals_threshold}")
+                    continue
 
+                stddev = peak_obj.peak_metrics.get('fit_stddev', float('inf'))
+                if stddev >= self.config.stddev_threshold:
+                    if self.debug:
+                        print(f"Peak rejected: StdDev {stddev:.4f} >= threshold {self.config.stddev_threshold}")
+                    continue
+
+                # Peak passed all criteria
                 if self.debug:
-                    print(f"\nFinal results for {sequence_str}:")
-                    print(f"Accepted {len(fitted_peaks)} peaks out of {len(search_peaks)} candidates")
-                    for peak in fitted_peaks:
-                        print(f"  Time: {peak.peak_metrics['time']:.2f}")
-                        print(f"  Height: {peak.peak_metrics['height']:.2f}")
-                        print(f"  Width: {peak.peak_metrics['width']:.2f}")
+                    print("Peak accepted: Passed all criteria")
+                fitted_peaks.append(peak_obj)
 
-            return chromatograms
+            chrom.peaks = fitted_peaks
+
+            if self.debug:
+                print(f"\nFinal results for {sequence_str}:")
+                print(f"Accepted {len(fitted_peaks)} peaks out of {len(search_peaks)} candidates")
+                for peak in fitted_peaks:
+                    print(f"  Time: {peak.peak_metrics['time']:.2f}")
+                    print(f"  Height: {peak.peak_metrics['height']:.2f}")
+                    print(f"  Width: {peak.peak_metrics['width']:.2f}")
+
+        return chromatograms
 
 
     def _fit_gaussian(self, x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:

@@ -18,6 +18,7 @@ test_data = {
         'building_blocks': ['Leu-LA03-Pro', 'Leu-Leu-DPro', 'DLeuMe-DLeuMe-DPro']
     }
 }
+
 def test_sgppm_single_compound():
     chroms = []
     for test in test_data.keys():
@@ -48,7 +49,6 @@ def test_sgppm_single_compound():
             y=intensities_array,
             building_blocks=building_blocks,
         )
-
 
         peak_picking_model = SimpleGaussianPeakPickingModel()
 

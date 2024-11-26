@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List, Tuple
-
+from ..peak_picking.building_block import BuildingBlock
 from ..peak_picking.sgppm_hierarchical import HierarchicalSimpleGaussianPeakPickingModel
 from ..peak_picking.sgppm_config import SGPPMConfig
 from ..peak_picking.chromatogram import Chromatogram

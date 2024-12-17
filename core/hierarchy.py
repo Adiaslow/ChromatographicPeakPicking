@@ -1,46 +1,52 @@
+# External imports
 from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import Dict, Generic, List, Optional, Set, TypeVar, Tuple
 from itertools import combinations
-from networkx import DiGraph
-from .building_block import BuildingBlock
+from matplotlib import pyplot as plt
+import matplotlib.colors as mcolors
+import networkx as nx
+
+# Internal imports
+from configs.global_config import GlobalConfig
+from core.building_block import BuildingBlock
 
 T = TypeVar('T')  # Type of elements in the sequence
 N = TypeVar('N')  # Type of null element
 V = TypeVar('V')  # Type of value (typically float for elution times)
 
-class Hierarchy(Generic[T, N, V]):
-    """
-    Represents a hierarchical structure of sequences where elements can be replaced by a null value,
-    with optional values (e.g., elution times) associated with complete sequences.
-    """
+@dataclass
+class Hierarchy(
+    Generic[T, N, V]
+):
+    """Represents a hierarchical structure of sequences where elements can be replaced by a null value,
+        with optional values (e.g., elution times) associated with complete sequences.
 
-    def __init__(self, null_element: BuildingBlock):
-        """
-        Initialize the hierarchy with a specified null element
+    Attributes:
+        null_element: BuildingBlock that represents a null/empty position
+    """
+    global_config: GlobalConfig = field(default_factory=GlobalConfig)
 
-        Args:
-            null_element: BuildingBlock that represents a null/empty position
-        """
-        self.null_element = null_element
-        self.levels: Dict[int, Set[Tuple[BuildingBlock, ...]]] = defaultdict(set)
-        self.descendants: Dict[Tuple[BuildingBlock, ...], Set[Tuple[BuildingBlock, ...]]] = defaultdict(set)
-        self.ancestors: Dict[Tuple[BuildingBlock, ...], Set[Tuple[BuildingBlock, ...]]] = defaultdict(set)
-        self.sequence_values: Dict[Tuple[BuildingBlock, ...], V] = {}
+    null_element: BuildingBlock = global_config.null_building_block
+    levels: Dict[int, Set[Tuple[BuildingBlock, ...]]] = defaultdict(set)
+    descendants: Dict[Tuple[BuildingBlock, ...], Set[Tuple[BuildingBlock, ...]]] = defaultdict(set)
+    ancestors: Dict[Tuple[BuildingBlock, ...], Set[Tuple[BuildingBlock, ...]]] = defaultdict(set)
+    sequence_values: Dict[Tuple[BuildingBlock, ...], V] = {}
 
     def count_non_null(self, sequence: Tuple[BuildingBlock, ...]) -> int:
         """Returns the number of non-null elements in the sequence"""
-        return sum(1 for elem in sequence if elem != self.null_element)
+        return sum(bool(elem != self.null_element)
+               for elem in sequence)
 
     def get_direct_descendants(self, sequence: Tuple[BuildingBlock, ...]) -> Set[Tuple[BuildingBlock, ...]]:
         """
         Generate all direct descendants of a sequence by replacing one non-null element with null
         """
-        descendants = set()
-        for i, elem in enumerate(sequence):
-            if elem != self.null_element:
-                descendant = sequence[:i] + (self.null_element,) + sequence[i+1:]
-                descendants.add(descendant)
-        return descendants
+        return {
+            sequence[:i] + (self.null_element,) + sequence[i + 1 :]
+            for i, elem in enumerate(sequence)
+            if elem != self.null_element
+        }
 
     def generate_descendants_with_k_elements(self, sequence: Tuple[BuildingBlock, ...], k: int) -> Set[Tuple[BuildingBlock, ...]]:
         """
@@ -86,7 +92,7 @@ class Hierarchy(Generic[T, N, V]):
     def generate_all_descendants(self, sequence: Tuple[BuildingBlock, ...]) -> List[Tuple[BuildingBlock, ...]]:
         """Generate all possible descendants of a sequence that preserve relative order."""
         sequences = []
-        original_length = len(sequence)
+        # original_length = len(sequence)
         non_null_count = self.count_non_null(sequence)
 
         for k in range(non_null_count + 1):
@@ -160,7 +166,7 @@ class Hierarchy(Generic[T, N, V]):
         G = nx.DiGraph()
 
         # Get all sequences grouped by level
-        max_level = max(hierarchy.levels.keys())
+        max_level = max(self.levels.keys())
 
         # Default color scheme if none provided
         if color_scheme is None:
@@ -173,7 +179,7 @@ class Hierarchy(Generic[T, N, V]):
         # Calculate positions for nodes
         pos = {}
         for level in range(max_level + 1):
-            sequences = hierarchy.get_sequences_by_level(level)
+            sequences = self.get_sequences_by_level(level)
             if not sequences:
                 continue
 
@@ -187,7 +193,7 @@ class Hierarchy(Generic[T, N, V]):
 
                 # Create node label
                 if with_values:
-                    value = hierarchy.get_sequence_value(seq)
+                    value = self.get_sequence_value(seq)
                     label = f"{'.'.join(str(x) for x in seq)}\n{value:.2f}" if value is not None else '.'.join(str(x) for x in seq)
                 else:
                     label = '.'.join(str(x) for x in seq)
@@ -200,7 +206,7 @@ class Hierarchy(Generic[T, N, V]):
 
         # Add edges
         for seq in G.nodes():
-            descendants = hierarchy.get_descendants(seq)
+            descendants = self.get_descendants(seq)
             for desc in descendants:
                 G.add_edge(seq, desc)
 

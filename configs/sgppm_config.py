@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
-from .config import Config
+from .Iconfig import IConfig
 
 @dataclass
-class SGPPMConfig(Config):
+class SGPPMConfig(IConfig):
     """Class for storing configuration parameters for the SGPPM algorithm.
 
     Attributes:
@@ -14,9 +14,6 @@ class SGPPMConfig(Config):
         fit_points (int): the number of points used for fitting
         search_rel_height (float): the relative height used for searching
         pick_rel_height (float): the relative height used for picking
-
-    Methods:
-        None
     """
     correction_method = "SWM"
     window_length = 5

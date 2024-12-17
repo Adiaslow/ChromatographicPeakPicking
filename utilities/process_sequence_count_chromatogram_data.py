@@ -1,6 +1,6 @@
 import numpy as np
 
-def process_chromatography_data(data_string):
+def process_sequence_count_chromatogram_data(data_string):
     # Split the data string into individual measurements
     measurements = data_string.split(", ")
 
@@ -11,7 +11,8 @@ def process_chromatography_data(data_string):
     # Parse each measurement
     for measurement in measurements:
         # Split each measurement into its components
-        components = measurement.split(":")
+
+        components = measurement.replace(";", ":").split(":")
 
         # Extract time (convert to minutes) and intensity (last value)
         time_seconds = float(components[0])

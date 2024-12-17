@@ -76,7 +76,8 @@ def main():
     example_values = {}
     for seq in all_sequences:
         # This is just an example - replace with your actual value assignment logic
-        non_null_count = sum(1 for x in seq if x != 'N')
+        non_null_count = sum(bool(x != 'N')
+                         for x in seq)
         example_values[seq] = non_null_count * 2.5 + len(seq)
 
     h.set_sequence_values(example_values)

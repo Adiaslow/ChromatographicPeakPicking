@@ -1,7 +1,10 @@
-from ..peak_picking.building_block import BuildingBlock
-from ..peak_picking.chromatogram import Chromatogram
-from ..peak_picking.process_sequence_count_chromatogram_data import process_chromatography_data
-from ..peak_picking.sgppm import SimpleGaussianPeakPickingModel
+import matplotlib.pyplot as plt
+from core.building_block import BuildingBlock
+from core.chromatogram import Chromatogram
+from utilities.process_sequence_count_chromatogram_data import process_sequence_countchrom_data
+from peak_pickers.sgppm import SGPPM
+from visualizers.chromatogram_visualizer import ChromatogramVisualizer
+
 
 
 test_data = {
@@ -19,41 +22,72 @@ test_data = {
     }
 }
 
+def plot_chromatogram(chrom: Chromatogram, index: int) -> None:
+    """Plot a single chromatogram with its peaks and picked peak.
+
+    Args:
+        chrom: Chromatogram object to plot
+        index: Index for subplot numbering
+    """
+    plt.figure(figsize=(12, 6))
+
+    # Plot base chromatogram
+    plt.plot(chrom.x, chrom.y, 'b-', label='Signal', alpha=0.7)
+
+    # Plot all detected peaks
+    for peak in chrom.peaks:
+        plt.plot(peak['time'], peak['height'], 'r.', markersize=10)
+
+    # Highlight picked peak
+    if chrom.picked_peak is not None:
+        plt.plot(chrom.picked_peak['time'], chrom.picked_peak['height'], 'g.',
+                markersize=15, label='Picked Peak')
+
+        # Add vertical line at picked peak
+        plt.axvline(x=chrom.picked_peak['time'], color='g', linestyle='--', alpha=0.3)
+
+    # Add building block information
+    bb_names = [bb.name for bb in chrom.building_blocks if bb is not None] if chrom.building_blocks is not None else []
+    plt.title(f"Chromatogram {index + 1}\nSequence: {'_'.join(bb_names[::-1])}")
+
+    plt.xlabel('Time')
+    plt.ylabel('Intensity')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+
+    # Adjust layout and display
+    plt.tight_layout()
+    plt.show()
+
 def test_sgppm_single_compound():
     chroms = []
     for test in test_data.keys():
         data = test_data[test]['data']
-
-        data = data.replace(";", ":")
-
-
-        # Replace semicolons with colons to standardize separators
-        data = data.replace(";", ":")
-
         # Get sorted times and intensities
-        times, intensities = process_chromatography_data(data)
-
+        times, intensities = process_sequence_countchrom_data(data)
         # Create the numpy arrays
         times_array = times
         intensities_array = intensities
         building_blocks = test_data[test]['building_blocks']
-
         building_blocks = [
             BuildingBlock(name=building_blocks[0]),
             BuildingBlock(name=building_blocks[1]),
             BuildingBlock(name=building_blocks[2])
         ]
-
-        _chromatogram = Chromatogram(
+        chrom = Chromatogram(
             x=times_array,
             y=intensities_array,
             building_blocks=building_blocks,
         )
-
-        peak_picking_model = SimpleGaussianPeakPickingModel()
-
-        _chromtogram = peak_picking_model.pick_peaks(chromatograms=_chromatogram)
-
-        chroms.append(_chromatogram)
-
+        peak_picker = SGPPM()
+        chrom = peak_picker.pick_peaks(chromatograms=chrom)
+        chroms.append(chrom)
     return chroms
+
+if __name__ == "__main__":
+    chroms = test_sgppm_single_compound()
+    visualizer = ChromatogramVisualizer()
+    for chrom in chroms:
+        print(chrom)
+        fig = visualizer.visualize(chrom)
+        plt.show()

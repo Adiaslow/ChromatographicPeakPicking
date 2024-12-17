@@ -34,6 +34,9 @@ A comprehensive Python toolkit for analyzing chromatographic data, featuring pea
   - Flexible data structures for chromatograms and peaks
   - Hierarchical data organization
 
+- **Reaction Profiling**:
+  - Split-Tree Analysis
+ 
 ## Project Structure
 
 ```

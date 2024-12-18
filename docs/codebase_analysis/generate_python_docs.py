@@ -1,4 +1,4 @@
-#
+# docs/codebase_analysis/generate_python_docs.py
 import os
 from pathlib import Path
 import datetime

@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Dict, Optional
-from .Imetrics import IMetrics
+from ..core.protocols import Metrics
 
 @dataclass
-class ChromatogramMetrics(IMetrics):
+class ChromatogramMetrics(Metrics):
     """Implementation of metrics storage for chromatograms.
 
     Stores various chromatogram-specific metrics including:

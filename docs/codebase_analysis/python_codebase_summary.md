@@ -1,9 +1,9 @@
 # Python Codebase Summary
 
-Generated on: 2024-12-18 13:03:19
+Generated on: 2024-12-18 14:25:06
 
 ## Summary Statistics
-- Total Python files: 48
+- Total Python files: 63
 - Total functions: 125
 
 ---
@@ -23,14 +23,6 @@ Generated on: 2024-12-18 13:03:19
 
 ## Directory: chromatographicpeakpicking/configurations
 
-
-### Iconfig.py
-**File Statistics:**
-- Total lines: 8
-- Non-empty lines: 6
-- Number of functions: 0
-
----
 
 ### __init__.py
 **File Statistics:**
@@ -119,20 +111,6 @@ def __post_init__
 
 ## Directory: chromatographicpeakpicking/metrics
 
-
-### Imetrics.py
-**File Statistics:**
-- Total lines: 28
-- Non-empty lines: 19
-- Number of functions: 3
-
-**Functions:**
-```python
-def get_metric
-def set_metric
-def get_all_metrics
-```
----
 
 ### __init__.py
 **File Statistics:**
@@ -235,112 +213,8 @@ def _calculate_peak_score
 ---
 
 
-## Directory: chromatographicpeakpicking/peak_pickers
+## Directory: chromatographicpeakpicking/parsers
 
-
-### Ipeak_picker.py
-**File Statistics:**
-- Total lines: 55
-- Non-empty lines: 40
-- Number of functions: 2
-
-**Functions:**
-```python
-def pick_peaks
-def _select_peak
-```
----
-
-### __init__.py
-**File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
-- Number of functions: 0
-
----
-
-### classic_chrome.py
-**File Statistics:**
-- Total lines: 152
-- Non-empty lines: 118
-- Number of functions: 5
-
-**Functions:**
-```python
-def pick_peaks
-def _prepare_chromatograms
-def _find_peaks
-def _select_peaks
-def _build_hierarchy
-```
----
-
-### hierarchical_sgppm.py
-**File Statistics:**
-- Total lines: 180
-- Non-empty lines: 150
-- Number of functions: 4
-
-**Functions:**
-```python
-def pick_peaks
-def _process_level
-def _apply_hierarchy_constraints
-def _hierarchical_peak_selection
-```
----
-
-### peak_finder.py
-**File Statistics:**
-- Total lines: 178
-- Non-empty lines: 152
-- Number of functions: 10
-
-**Functions:**
-```python
-def __post_init__
-def _log_debug
-def find_peaks
-def _calculate_height_threshold
-def _calculate_prominence_threshold
-def _calculate_width_threshold
-def _calculate_distance_threshold
-def _calculate_window_length
-def _create_peaks
-def __call__
-```
----
-
-### sgppm.py
-**File Statistics:**
-- Total lines: 240
-- Non-empty lines: 183
-- Number of functions: 4
-
-**Functions:**
-```python
-def __post_init__
-def pick_peaks
-def _fit_gaussians
-def _select_peak
-```
----
-
-
-## Directory: chromatographicpeakpicking/data_parsers
-
-
-### Idata_parser.py
-**File Statistics:**
-- Total lines: 16
-- Non-empty lines: 11
-- Number of functions: 1
-
-**Functions:**
-```python
-def parse_data
-```
----
 
 ### __init__.py
 **File Statistics:**
@@ -470,8 +344,56 @@ def __repr__
 ---
 
 
-## Directory: chromatographicpeakpicking/visualizers
+## Directory: chromatographicpeakpicking/core/protocols
 
+
+### Ibaseline_corrector.py
+**File Statistics:**
+- Total lines: 90
+- Non-empty lines: 67
+- Number of functions: 3
+
+**Functions:**
+```python
+def validate_chromatogram
+def correct_baseline
+def __call__
+```
+---
+
+### Iconfig.py
+**File Statistics:**
+- Total lines: 8
+- Non-empty lines: 6
+- Number of functions: 0
+
+---
+
+### Idata_parser.py
+**File Statistics:**
+- Total lines: 16
+- Non-empty lines: 11
+- Number of functions: 1
+
+**Functions:**
+```python
+def parse_data
+```
+---
+
+### Imetrics.py
+**File Statistics:**
+- Total lines: 28
+- Non-empty lines: 19
+- Number of functions: 3
+
+**Functions:**
+```python
+def get_metric
+def set_metric
+def get_all_metrics
+```
+---
 
 ### Ivisualizer.py
 **File Statistics:**
@@ -486,6 +408,102 @@ def save
 def __call__
 ```
 ---
+
+
+## Directory: chromatographicpeakpicking/peak_selection
+
+
+### Ipeak_picker.py
+**File Statistics:**
+- Total lines: 55
+- Non-empty lines: 40
+- Number of functions: 2
+
+**Functions:**
+```python
+def pick_peaks
+def _select_peak
+```
+---
+
+### __init__.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### classic_chrome.py
+**File Statistics:**
+- Total lines: 152
+- Non-empty lines: 118
+- Number of functions: 5
+
+**Functions:**
+```python
+def pick_peaks
+def _prepare_chromatograms
+def _find_peaks
+def _select_peaks
+def _build_hierarchy
+```
+---
+
+### hierarchical_sgppm.py
+**File Statistics:**
+- Total lines: 180
+- Non-empty lines: 150
+- Number of functions: 4
+
+**Functions:**
+```python
+def pick_peaks
+def _process_level
+def _apply_hierarchy_constraints
+def _hierarchical_peak_selection
+```
+---
+
+### peak_finder.py
+**File Statistics:**
+- Total lines: 178
+- Non-empty lines: 152
+- Number of functions: 10
+
+**Functions:**
+```python
+def __post_init__
+def _log_debug
+def find_peaks
+def _calculate_height_threshold
+def _calculate_prominence_threshold
+def _calculate_width_threshold
+def _calculate_distance_threshold
+def _calculate_window_length
+def _create_peaks
+def __call__
+```
+---
+
+### sgppm.py
+**File Statistics:**
+- Total lines: 240
+- Non-empty lines: 183
+- Number of functions: 4
+
+**Functions:**
+```python
+def __post_init__
+def pick_peaks
+def _fit_gaussians
+def _select_peak
+```
+---
+
+
+## Directory: chromatographicpeakpicking/visualizers
+
 
 ### __init__.py
 **File Statistics:**
@@ -511,6 +529,138 @@ def visualize
 **File Statistics:**
 - Total lines: 19
 - Non-empty lines: 14
+- Number of functions: 0
+
+---
+
+
+## Directory: chromatographicpeakpicking/io/writers
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### csv_writer.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### hdf5_writer.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### npz_writer.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### numpy_writer.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### pickle_writter.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### xlsx_writer.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+
+## Directory: chromatographicpeakpicking/io/readers
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### csv_reader.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### hdf5_reader.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### npz_reader.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### numpy_reader.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### pickle_reader.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### xlsx_reader.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+
+## Directory: chromatographicpeakpicking/io/loaders
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
 - Number of functions: 0
 
 ---
@@ -554,20 +704,6 @@ def process_sequence_count_chromatogram_data
 
 ## Directory: chromatographicpeakpicking/baseline_correctors
 
-
-### Ibaseline_corrector.py
-**File Statistics:**
-- Total lines: 90
-- Non-empty lines: 67
-- Number of functions: 3
-
-**Functions:**
-```python
-def validate_chromatogram
-def correct_baseline
-def __call__
-```
----
 
 ### __init__.py
 **File Statistics:**

@@ -23,8 +23,9 @@ def extract_python_info(file_path: Path) -> Dict[str, Any]:
         tree = ast.parse(content)
 
         # Get module docstring
-        if ast.get_docstring(tree):
-            info['header_comment'] = [line.strip() for line in ast.get_docstring(tree).split('\n')]
+        docstring = ast.get_docstring(tree)
+        if docstring is not None:
+            info['header_comment'] = [line.strip() for line in docstring.split('\n')]
 
         # Extract function definitions
         for node in ast.walk(tree):
@@ -32,8 +33,10 @@ def extract_python_info(file_path: Path) -> Dict[str, Any]:
                 info['functions'].append(node.name)
 
     except SyntaxError:
+        print(f"Syntax error in file {file_path}")
         pass
-    except Exception:
+    except Exception as e:
+        print(f"Error processing file {file_path}: {str(e)}")
         pass
 
     return info

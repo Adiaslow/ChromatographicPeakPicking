@@ -5,15 +5,15 @@ from matplotlib.figure import Figure
 from typing import Generic, TypeVar
 
 # Internal imports
-from configs.Iconfig import IConfig
+from . import Config
 from core.chromatogram import Chromatogram
 from visualizers.image_type import ImageType
 
-ConfigT = TypeVar('ConfigT', bound='IConfig')
+ConfigT = TypeVar('ConfigT', bound='Config')
 
 
 @dataclass
-class IVisualizer(ABC, Generic[ConfigT]):
+class Visualizer(ABC, Generic[ConfigT]):
     """Abstract class to define the interface for visualizers.
 
     Attributes:

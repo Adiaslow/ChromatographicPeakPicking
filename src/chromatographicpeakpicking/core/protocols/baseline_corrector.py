@@ -3,14 +3,14 @@ from dataclasses import dataclass
 from typing import Generic, TypeVar
 import numpy as np
 
-from configs.Iconfig import IConfig
+from . import Config
 from core.chromatogram import Chromatogram
 
 # Type variable for configuration, bound to IConfig
-ConfigT = TypeVar('ConfigT', bound=IConfig)
+ConfigT = TypeVar('ConfigT', bound=Config)
 
 @dataclass
-class IBaselineCorrector(ABC, Generic[ConfigT]):
+class BaselineCorrector(ABC, Generic[ConfigT]):
     """Abstract base class for baseline correction algorithms.
 
     This class defines the interface for baseline correction algorithms.

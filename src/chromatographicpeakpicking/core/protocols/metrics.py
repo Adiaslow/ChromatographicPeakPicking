@@ -1,9 +1,11 @@
+# src/chromatographicpeakpicking/core/protocols/metrics.py
+
 from abc import ABC
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
 @dataclass
-class IMetrics(ABC):
+class Metrics(ABC):
     """Abstract base class for metrics storage.
 
     This interface defines the basic structure for metrics storage

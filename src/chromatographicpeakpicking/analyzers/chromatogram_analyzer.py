@@ -6,8 +6,8 @@ from scipy import stats
 from scipy import signal
 from typing import List, Tuple
 
-from configs.chromatogram_analyzer_config import ChromatogramAnalyzerConfig
-from configs.global_config import GlobalConfig
+from ..configurations import ChromatogramAnalyzerConfig
+from ..configurations import GlobalConfig
 from core.chromatogram import Chromatogram
 
 @dataclass

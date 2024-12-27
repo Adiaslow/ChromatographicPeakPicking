@@ -41,7 +41,7 @@ def extract_python_info(file_path: Path) -> Dict[str, Any]:
 
     return info
 
-def generate_documentation(directory: str, output_file: str = 'docs/codebase_analysis/python_codebase_summary.md'):
+def generate_documentation(directory: str, output_file: str = 'codebase_analysis/python_codebase_summary.md'):
     """Generate documentation for all Python files in the directory."""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

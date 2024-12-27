@@ -1,26 +1,57 @@
-from dataclasses import dataclass
+# src/chromatographicpeakpicking/analyzers/peak_analyzer.py
+from dataclasses import dataclass, field
 import numpy as np
 from scipy.signal import peak_widths
 from scipy.optimize import curve_fit
 from typing import List
-
-from core.chromatogram import Chromatogram
-from core.peak import Peak
+from src.chromatographicpeakpicking.core.protocols.configurable import Configurable
+from src.chromatographicpeakpicking.core.types.config import BaseConfig, ConfigMetadata, ConfigValidation
+from src.chromatographicpeakpicking.core.types.validation import ValidationResult
+from src.chromatographicpeakpicking.core.domain.chromatogram import Chromatogram
+from src.chromatographicpeakpicking.core.domain.peak import Peak
 
 @dataclass
-class PeakAnalyzer:
-    @staticmethod
-    def analyze_peak(peak: Peak, chromatogram: Chromatogram) -> Peak:
+class PeakAnalyzerConfig(BaseConfig):
+    def __init__(self, threshold: float = 0.5):
+        super().__init__(metadata=ConfigMetadata(
+            name="PeakAnalyzerConfig",
+            version="1.0",
+            description="Configuration for Peak Analyzer",
+            defaults={"threshold": 0.5},
+            schema={},
+            validation_level=ConfigValidation.STRICT
+        ), parameters={"threshold": threshold})
+
+@dataclass
+class PeakAnalyzer(Configurable[PeakAnalyzerConfig]):
+    config: PeakAnalyzerConfig = field(default_factory=PeakAnalyzerConfig)
+
+    def configure(self, config: PeakAnalyzerConfig) -> ValidationResult:
+        validation_result = self.validate_config(config)
+        if validation_result.is_valid:
+            self.config = config
+        return validation_result
+
+    def get_metadata(self) -> ConfigMetadata:
+        return self.config.metadata
+
+    def validate_config(self, config: PeakAnalyzerConfig) -> ValidationResult:
+        errors = []
+        if config.parameters["threshold"] < 0 or config.parameters["threshold"] > 1:
+            errors.append("Threshold must be between 0 and 1.")
+        return ValidationResult(is_valid=len(errors) == 0, messages=errors)
+
+    def analyze_peak(self, peak: Peak, chromatogram: Chromatogram) -> Peak:
         x, y = chromatogram.x, chromatogram.y_corrected
-        peak = PeakAnalyzer._calculate_peak_boundaries(x, y, peak)
-        peak = PeakAnalyzer._calculate_peak_width(x, y, peak)
-        peak = PeakAnalyzer._calculate_peak_area(x, y, peak)
-        peak = PeakAnalyzer._calculate_peak_symmetry(y, peak)
-        peak = PeakAnalyzer._calculate_peak_skewness(y, peak)
-        peak = PeakAnalyzer._calculate_peak_prominence(y, peak)
-        peak = PeakAnalyzer._calculate_gaussian_fit(x, y, peak)
-        peak = PeakAnalyzer._calculate_peak_resolution(x, y, peak, chromatogram.peaks)
-        peak = PeakAnalyzer._calculate_peak_score(peak)
+        peak = self._calculate_peak_boundaries(x, y, peak)
+        peak = self._calculate_peak_width(x, y, peak)
+        peak = self._calculate_peak_area(x, y, peak)
+        peak = self._calculate_peak_symmetry(y, peak)
+        peak = self._calculate_peak_skewness(y, peak)
+        peak = self._calculate_peak_prominence(y, peak)
+        peak = self._calculate_gaussian_fit(x, y, peak)
+        peak = self._calculate_peak_resolution(x, y, peak, chromatogram.peaks)
+        peak = self._calculate_peak_score(peak)
         return peak
 
     @staticmethod
@@ -50,9 +81,7 @@ class PeakAnalyzer:
 
     @staticmethod
     def _calculate_gaussian_fit(x: np.ndarray, y: np.ndarray, peak: Peak) -> Peak:
-        """Calculate how well the peak fits to a Gaussian shape.
-        Implements more robust parameter estimation and fitting constraints.
-        """
+        """Calculate how well the peak fits to a Gaussian shape."""
         # Get the peak region
         peak_slice = slice(peak['left_base_index'], peak['right_base_index'] + 1)
         x_peak = x[peak_slice]
@@ -63,38 +92,29 @@ class PeakAnalyzer:
         y_peak_corrected = y_peak - y_baseline
 
         try:
-            # More careful parameter estimation
+            # Estimate parameters
             amplitude = peak['height'] - y_baseline
             mean = peak['time']
-            # Estimate std from the width at half maximum
             half_max = amplitude / 2
             half_max_indices = np.where(y_peak_corrected >= half_max)[0]
             if len(half_max_indices) >= 2:
                 sigma_estimate = (x_peak[half_max_indices[-1]] - x_peak[half_max_indices[0]]) / 2.355
             else:
-                sigma_estimate = (x_peak[-1] - x_peak[0]) / 4  # fallback estimate
+                sigma_estimate = (x_peak[-1] - x_peak[0]) / 4
 
-            # Initial guesses
             p0 = [amplitude, mean, max(sigma_estimate, 0.1)]
-
-            # Reasonable bounds based on the data
             bounds = (
-                [amplitude * 0.5, x_peak[0], sigma_estimate * 0.2],  # lower bounds
-                [amplitude * 1.5, x_peak[-1], sigma_estimate * 5.0]  # upper bounds
+                [amplitude * 0.5, x_peak[0], sigma_estimate * 0.2],
+                [amplitude * 1.5, x_peak[-1], sigma_estimate * 5.0]
             )
 
-            # Fit with better constrained parameters
             popt, _ = curve_fit(PeakAnalyzer._gaussian, x_peak, y_peak_corrected,
-                              p0=p0, bounds=bounds, maxfev=2000)
+                                p0=p0, bounds=bounds, maxfev=2000)
 
-            # Calculate fitted values
             y_fit = PeakAnalyzer._gaussian(x_peak, *popt) + y_baseline
 
-            # Calculate residuals as RMSE normalized by peak height
             residuals = np.sqrt(np.mean((y_peak - y_fit) ** 2)) / peak['height']
             peak['gaussian_residuals'] = residuals
-
-            # Store fit parameters for debugging
             peak['gaussian_fit_params'] = {
                 'amplitude': popt[0],
                 'mean': popt[1],
@@ -103,7 +123,6 @@ class PeakAnalyzer:
             }
 
         except (RuntimeError, ValueError) as e:
-            # If curve fitting fails, set a high residual value
             peak['gaussian_residuals'] = 1.0
             peak['gaussian_fit_params'] = {
                 'error': str(e)
@@ -149,7 +168,7 @@ class PeakAnalyzer:
             return peak
 
         distances = np.abs(np.array(all_peak_indices) - peak['index'])
-        nearest = all_peak_indices[np.argsort(distances)[1]]  # First is self
+        nearest = all_peak_indices[np.argsort(distances)[1]]
         delta_t = abs(x[peak['index']] - x[nearest])
         peak['resolution'] = 2 * delta_t / (peak['width'] + peak_widths(y, [nearest])[0][0])
         return peak
@@ -168,12 +187,11 @@ class PeakAnalyzer:
             1 - abs(peak['skewness']) / 2
         ]
 
-        # Add time penalty directly in score calculation
-        relative_time = peak['time'] / 60  # Assuming time is in minutes
+        relative_time = peak['time'] / 60
         time_weight = (relative_time / 0.3) ** 6 if relative_time < 0.3 else 1.0
 
         peak['score'] = (np.mean(metrics) *
-                        peak['prominence'] *
-                        peak['area'] *
-                        time_weight)
+                         peak['prominence'] *
+                         peak['area'] *
+                         time_weight)
         return peak

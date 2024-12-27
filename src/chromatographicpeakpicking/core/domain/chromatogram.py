@@ -1,6 +1,6 @@
 # src/chromatographicpeakpicking/core/domain/chromatogram.py
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Iterator
+from typing import List, Dict, Any, Optional
 from uuid import uuid4
 import numpy as np
 from .peak import Peak
@@ -23,6 +23,10 @@ class Chromatogram:
     peaks: List[Peak] = field(default_factory=list)
     baseline: Optional[np.ndarray] = None
     noise_level: Optional[float] = None
+    y_corrected: Optional[np.ndarray] = None
+    search_mask: Optional[np.ndarray] = None
+    metrics: Optional[Any] = None  # Use Any to avoid circular import
+    picked_peak: Optional[Peak] = None
 
     # Metadata
     building_blocks: List[BuildingBlock] = field(default_factory=list)
@@ -89,6 +93,10 @@ class Chromatogram:
             peaks=peaks,
             baseline=self.baseline,
             noise_level=self.noise_level,
+            y_corrected=self.y_corrected,
+            search_mask=self.search_mask,
+            metrics=self.metrics,
+            picked_peak=self.picked_peak,
             building_blocks=self.building_blocks,
             metadata=self.metadata
         )
@@ -104,6 +112,10 @@ class Chromatogram:
             peaks=self.peaks,
             baseline=baseline,
             noise_level=self.noise_level,
+            y_corrected=self.y_corrected,
+            search_mask=self.search_mask,
+            metrics=self.metrics,
+            picked_peak=self.picked_peak,
             building_blocks=self.building_blocks,
             metadata=self.metadata
         )
@@ -117,6 +129,10 @@ class Chromatogram:
             peaks=self.peaks,
             baseline=self.baseline,
             noise_level=self.noise_level,
+            y_corrected=self.y_corrected,
+            search_mask=self.search_mask,
+            metrics=self.metrics,
+            picked_peak=self.picked_peak,
             building_blocks=blocks,
             metadata=self.metadata
         )
@@ -132,6 +148,10 @@ class Chromatogram:
             peaks=self.peaks,
             baseline=self.baseline,
             noise_level=self.noise_level,
+            y_corrected=self.y_corrected,
+            search_mask=self.search_mask,
+            metrics=self.metrics,
+            picked_peak=self.picked_peak,
             building_blocks=self.building_blocks,
             metadata=new_metadata
         )
@@ -165,6 +185,10 @@ class Chromatogram:
             peaks=new_peaks,
             baseline=new_baseline,
             noise_level=self.noise_level,
+            y_corrected=self.y_corrected,
+            search_mask=self.search_mask,
+            metrics=self.metrics,
+            picked_peak=self.picked_peak,
             building_blocks=self.building_blocks,
             metadata=self.metadata
         )
@@ -190,6 +214,10 @@ class Chromatogram:
             peaks=self.peaks,  # Peaks are preserved as they store absolute times
             baseline=new_baseline,
             noise_level=self.noise_level,
+            y_corrected=self.y_corrected,
+            search_mask=self.search_mask,
+            metrics=self.metrics,
+            picked_peak=self.picked_peak,
             building_blocks=self.building_blocks,
             metadata=self.metadata
         )
@@ -217,6 +245,10 @@ class Chromatogram:
             peaks=self.peaks,
             baseline=self.baseline,
             noise_level=self.noise_level,
+            y_corrected=self.y_corrected,
+            search_mask=self.search_mask,
+            metrics=self.metrics,
+            picked_peak=self.picked_peak,
             building_blocks=self.building_blocks,
             metadata=self.metadata
         )
@@ -268,6 +300,10 @@ class Chromatogram:
             peaks=normalized_peaks,
             baseline=normalized_baseline,
             noise_level=self.noise_level / factor if self.noise_level is not None else None,
+            y_corrected=self.y_corrected,
+            search_mask=self.search_mask,
+            metrics=self.metrics,
+            picked_peak=self.picked_peak,
             building_blocks=self.building_blocks,
             metadata=self.metadata
         )

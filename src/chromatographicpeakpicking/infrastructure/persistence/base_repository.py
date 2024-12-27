@@ -1,29 +1,39 @@
 # src/chromatographicpeakpicking/infrastructure/persistence/base_repository.py
-from abc import ABC, abstractmethod
-from typing import Generic, TypeVar, Optional, List, Any
-from ...core.protocols.serializable import Serializable
 
-T = TypeVar('T', bound=Serializable)
+"""
+Base repository for persistence layer.
+"""
 
-class BaseRepository(ABC, Generic[T]):
-    """Base class for all repositories."""
+class BaseRepository:
+    def save(self, entity):
+        """
+        Save an entity to the repository.
 
-    @abstractmethod
-    def save(self, entity: T) -> None:
-        """Save an entity."""
-        pass
+        Args:
+            entity: The entity to save.
+        """
+        raise NotImplementedError("Save method not implemented.")
 
-    @abstractmethod
-    def get(self, id: Any) -> Optional[T]:
-        """Get an entity by ID."""
-        pass
+    def get(self, entity_id):
+        """
+        Retrieve an entity by its ID.
 
-    @abstractmethod
-    def get_all(self) -> List[T]:
-        """Get all entities."""
-        pass
+        Args:
+            entity_id: The ID of the entity to retrieve.
+        """
+        raise NotImplementedError("Get method not implemented.")
 
-    @abstractmethod
-    def delete(self, id: Any) -> None:
-        """Delete an entity."""
-        pass
+    def get_all(self):
+        """
+        Retrieve all entities from the repository.
+        """
+        raise NotImplementedError("Get all method not implemented.")
+
+    def delete(self, entity_id):
+        """
+        Delete an entity by its ID.
+
+        Args:
+            entity_id: The ID of the entity to delete.
+        """
+        raise NotImplementedError("Delete method not implemented.")

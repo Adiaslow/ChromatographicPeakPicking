@@ -1,10 +1,10 @@
 # Python Codebase Summary
 
-Generated on: 2024-12-27 05:36:40
+Generated on: 2024-12-27 06:43:20
 
 ## Summary Statistics
-- Total Python files: 100
-- Total functions: 231
+- Total Python files: 124
+- Total functions: 269
 
 ---
 
@@ -126,9 +126,12 @@ def __post_init__
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 6
+- Non-empty lines: 4
 - Number of functions: 0
+
+**File Description:**
+Initialization module for visualization components.
 
 ---
 
@@ -319,21 +322,25 @@ def _notify_observers
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 8
+- Non-empty lines: 6
 - Number of functions: 0
 
 ---
 
 ### chromatogram_analyzer.py
 **File Statistics:**
-- Total lines: 278
-- Non-empty lines: 219
-- Number of functions: 11
+- Total lines: 302
+- Non-empty lines: 240
+- Number of functions: 15
 
 **Functions:**
 ```python
+def __init__
 def __post_init__
+def configure
+def get_metadata
+def validate_config
 def analyze_chromatogram
 def _validate_chromatogram
 def _calculate_moving_std
@@ -409,8 +416,8 @@ def _clean_dataframe
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 3
+- Non-empty lines: 2
 - Number of functions: 0
 
 ---
@@ -530,8 +537,8 @@ def __repr__
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 20
+- Non-empty lines: 18
 - Number of functions: 0
 
 ---
@@ -575,8 +582,8 @@ def has_warnings
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 12
+- Non-empty lines: 10
 - Number of functions: 0
 
 ---
@@ -641,8 +648,8 @@ def create_pipeline
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 12
+- Non-empty lines: 10
 - Number of functions: 0
 
 ---
@@ -744,8 +751,8 @@ def __str__
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 14
-- Non-empty lines: 12
+- Total lines: 23
+- Non-empty lines: 21
 - Number of functions: 0
 
 ---
@@ -895,30 +902,56 @@ def save
 ```
 ---
 
-### visualizer.py
-**File Statistics:**
-- Total lines: 92
-- Non-empty lines: 70
-- Number of functions: 3
-
-**Functions:**
-```python
-def visualize
-def save
-def __call__
-```
----
-
 
 ## Directory: chromatographicpeakpicking/analysis
 
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 6
+- Non-empty lines: 4
 - Number of functions: 0
 
+**File Description:**
+Initialization module for analysis components.
+
+---
+
+
+## Directory: chromatographicpeakpicking/analysis/chromatogram
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 6
+- Non-empty lines: 4
+- Number of functions: 0
+
+---
+
+### baseline_analyzer.py
+**File Statistics:**
+- Total lines: 47
+- Non-empty lines: 39
+- Number of functions: 1
+
+**Functions:**
+```python
+def __init__
+```
+---
+
+### peak_detector.py
+**File Statistics:**
+- Total lines: 82
+- Non-empty lines: 72
+- Number of functions: 2
+
+**Functions:**
+```python
+def __init__
+def __init__
+```
 ---
 
 
@@ -927,9 +960,12 @@ def __call__
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 11
+- Non-empty lines: 8
 - Number of functions: 0
+
+**File Description:**
+Initialization module for baseline correctors.
 
 ---
 
@@ -947,7 +983,7 @@ def validate
 ---
 
 
-## Directory: chromatographicpeakpicking/analysis/selection
+## Directory: chromatographicpeakpicking/analysis/peak
 
 
 ### __init__.py
@@ -958,16 +994,146 @@ def validate
 
 ---
 
+### peak_analyzer.py
+**File Statistics:**
+- Total lines: 140
+- Non-empty lines: 119
+- Number of functions: 7
+
+**Functions:**
+```python
+def __init__
+def __init__
+def _calculate_r2
+def _calculate_symmetry
+def _calculate_capacity
+def gaussian
+def gaussian
+```
+---
+
+### peak_interogrator.py
+**File Statistics:**
+- Total lines: 111
+- Non-empty lines: 93
+- Number of functions: 2
+
+**Functions:**
+```python
+def __init__
+def __init__
+```
+---
+
+
+## Directory: chromatographicpeakpicking/analysis/selection
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 2
+- Non-empty lines: 1
+- Number of functions: 0
+
+---
+
+
+## Directory: chromatographicpeakpicking/analysis/protocols
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 5
+- Non-empty lines: 3
+- Number of functions: 0
+
+---
+
+### analyzer.py
+**File Statistics:**
+- Total lines: 28
+- Non-empty lines: 22
+- Number of functions: 0
+
+---
+
 
 ## Directory: chromatographicpeakpicking/analysis/detection
 
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 2
+- Non-empty lines: 1
 - Number of functions: 0
 
+---
+
+
+## Directory: chromatographicpeakpicking/analysis/base
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 6
+- Non-empty lines: 4
+- Number of functions: 0
+
+---
+
+### analysis_context.py
+**File Statistics:**
+- Total lines: 47
+- Non-empty lines: 36
+- Number of functions: 2
+
+**Functions:**
+```python
+def __init__
+def register_analyzer
+```
+---
+
+
+## Directory: chromatographicpeakpicking/config
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 6
+- Non-empty lines: 4
+- Number of functions: 0
+
+**File Description:**
+Initialization module for configuration components.
+
+---
+
+### config_manager.py
+**File Statistics:**
+- Total lines: 26
+- Non-empty lines: 21
+- Number of functions: 4
+
+**Functions:**
+```python
+def __init__
+def register_component
+def configure_component
+def get_component_metadata
+```
+---
+
+### global_config.py
+**File Statistics:**
+- Total lines: 12
+- Non-empty lines: 9
+- Number of functions: 1
+
+**Functions:**
+```python
+def __post_init__
+```
 ---
 
 
@@ -989,9 +1155,12 @@ def _select_peak
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 6
+- Non-empty lines: 4
 - Number of functions: 0
+
+**File Description:**
+Initialization module for selection algorithms.
 
 ---
 
@@ -1095,7 +1264,7 @@ def visualize
 ---
 
 
-## Directory: chromatographicpeakpicking/utils
+## Directory: chromatographicpeakpicking/io
 
 
 ### __init__.py
@@ -1103,6 +1272,115 @@ def visualize
 - Total lines: 1
 - Non-empty lines: 0
 - Number of functions: 0
+
+---
+
+
+## Directory: chromatographicpeakpicking/io/formats
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### csv_format.py
+**File Statistics:**
+- Total lines: 34
+- Non-empty lines: 28
+- Number of functions: 0
+
+---
+
+### excel_format.py
+**File Statistics:**
+- Total lines: 34
+- Non-empty lines: 28
+- Number of functions: 0
+
+---
+
+### format_handler.py
+**File Statistics:**
+- Total lines: 23
+- Non-empty lines: 18
+- Number of functions: 0
+
+---
+
+
+## Directory: chromatographicpeakpicking/io/writers
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 6
+- Non-empty lines: 4
+- Number of functions: 0
+
+**File Description:**
+Initialization module for writers.
+
+---
+
+
+## Directory: chromatographicpeakpicking/io/readers
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 6
+- Non-empty lines: 4
+- Number of functions: 0
+
+**File Description:**
+Initialization module for readers.
+
+---
+
+
+## Directory: chromatographicpeakpicking/io/protocols
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 1
+- Non-empty lines: 0
+- Number of functions: 0
+
+---
+
+### reader.py
+**File Statistics:**
+- Total lines: 15
+- Non-empty lines: 11
+- Number of functions: 0
+
+---
+
+### writer.py
+**File Statistics:**
+- Total lines: 15
+- Non-empty lines: 11
+- Number of functions: 0
+
+---
+
+
+## Directory: chromatographicpeakpicking/utils
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 6
+- Non-empty lines: 4
+- Number of functions: 0
+
+**File Description:**
+Initialization module for utility functions.
 
 ---
 
@@ -1128,6 +1406,21 @@ def gaussian_curve
 ```python
 def process_sequence_count_chromatogram_data
 ```
+---
+
+
+## Directory: chromatographicpeakpicking/peak_detection
+
+
+### __init__.py
+**File Statistics:**
+- Total lines: 6
+- Non-empty lines: 4
+- Number of functions: 0
+
+**File Description:**
+Initialization module for peak detection algorithms.
+
 ---
 
 
@@ -1185,12 +1478,30 @@ def correct_baseline
 ## Directory: chromatographicpeakpicking/infrastructure/metrics
 
 
-### performance_metrics.py
+### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 6
+- Non-empty lines: 4
 - Number of functions: 0
 
+---
+
+### performance_metrics.py
+**File Statistics:**
+- Total lines: 41
+- Non-empty lines: 31
+- Number of functions: 4
+
+**File Description:**
+Performance metrics tracking.
+
+**Functions:**
+```python
+def __init__
+def start_operation
+def end_operation
+def get_operation_stats
+```
 ---
 
 
@@ -1199,17 +1510,20 @@ def correct_baseline
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 10
+- Non-empty lines: 8
 - Number of functions: 0
 
 ---
 
 ### base_repository.py
 **File Statistics:**
-- Total lines: 30
-- Non-empty lines: 23
+- Total lines: 40
+- Non-empty lines: 31
 - Number of functions: 4
+
+**File Description:**
+Base repository for persistence layer.
 
 **Functions:**
 ```python
@@ -1222,9 +1536,12 @@ def delete
 
 ### chromatogram_repository.py
 **File Statistics:**
-- Total lines: 45
-- Non-empty lines: 38
+- Total lines: 46
+- Non-empty lines: 35
 - Number of functions: 5
+
+**File Description:**
+Repository for handling chromatogram persistence.
 
 **Functions:**
 ```python
@@ -1238,10 +1555,21 @@ def delete
 
 ### peak_repository.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
-- Number of functions: 0
+- Total lines: 46
+- Non-empty lines: 35
+- Number of functions: 5
 
+**File Description:**
+Repository for handling peak persistence.
+
+**Functions:**
+```python
+def __init__
+def save
+def get
+def get_all
+def delete
+```
 ---
 
 
@@ -1258,10 +1586,21 @@ def delete
 
 ### result_cache.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
-- Number of functions: 0
+- Total lines: 45
+- Non-empty lines: 35
+- Number of functions: 5
 
+**File Description:**
+Cache for storing analysis results.
+
+**Functions:**
+```python
+def __init__
+def get
+def set
+def invalidate
+def clear
+```
 ---
 
 
@@ -1270,8 +1609,8 @@ def delete
 
 ### __init__.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
+- Total lines: 8
+- Non-empty lines: 6
 - Number of functions: 0
 
 ---
@@ -1298,8 +1637,18 @@ def get_session_id
 
 ### performance_logger.py
 **File Statistics:**
-- Total lines: 1
-- Non-empty lines: 0
-- Number of functions: 0
+- Total lines: 36
+- Non-empty lines: 28
+- Number of functions: 4
 
+**File Description:**
+Logger for performance metrics.
+
+**Functions:**
+```python
+def __init__
+def log_operation
+def get_operation_history
+def get_average_duration
+```
 ---

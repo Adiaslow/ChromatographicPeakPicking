@@ -1,60 +1,45 @@
 # src/chromatographicpeakpicking/infrastructure/persistence/peak_repository.py
-from typing import Optional, List, Dict
-from ...core.domain.peak import Peak
+
+"""
+Repository for handling peak persistence.
+"""
+
 from .base_repository import BaseRepository
-from ..logging.analysis_logger import AnalysisLogger
 
-class PeakRepository(BaseRepository[Peak]):
-    """Repository for managing Peak domain objects with proper persistence."""
+class PeakRepository(BaseRepository):
+    def __init__(self):
+        self.peaks = {}
 
-    def __init__(self, logger: Optional[AnalysisLogger] = None):
-        self._peaks: Dict[str, Peak] = {}
-        self._logger = logger
-
-    async def save(self, peak: Peak) -> None:
-        """Save a peak to the repository.
+    def save(self, peak):
+        """
+        Save a peak to the repository.
 
         Args:
-            peak: The Peak domain object to save
+            peak: The peak to save.
         """
-        if not peak.id:
-            raise ValueError("Peak must have an ID")
+        self.peaks[peak.id] = peak
 
-        self._peaks[peak.id] = peak
-        if self._logger:
-            self._logger.log_analysis_step(f"Saved peak {peak.id}")
-
-    async def get(self, id: str) -> Optional[Peak]:
-        """Retrieve a peak by ID.
+    def get(self, peak_id):
+        """
+        Retrieve a peak by its ID.
 
         Args:
-            id: The unique identifier of the peak
-
-        Returns:
-            The Peak if found, None otherwise
+            peak_id: The ID of the peak to retrieve.
         """
-        peak = self._peaks.get(id)
-        if self._logger and peak:
-            self._logger.log_analysis_step(f"Retrieved peak {id}")
-        return peak
+        return self.peaks.get(peak_id)
 
-    async def get_all(self) -> List[Peak]:
-        """Retrieve all peaks in the repository.
-
-        Returns:
-            List of all Peak objects
+    def get_all(self):
         """
-        if self._logger:
-            self._logger.log_analysis_step("Retrieved all peaks")
-        return list(self._peaks.values())
+        Retrieve all peaks from the repository.
+        """
+        return list(self.peaks.values())
 
-    async def delete(self, id: str) -> None:
-        """Delete a peak from the repository.
+    def delete(self, peak_id):
+        """
+        Delete a peak by its ID.
 
         Args:
-            id: The unique identifier of the peak to delete
+            peak_id: The ID of the peak to delete.
         """
-        if id in self._peaks:
-            del self._peaks[id]
-            if self._logger:
-                self._logger.log_analysis_step(f"Deleted peak {id}")
+        if peak_id in self.peaks:
+            del self.peaks[peak_id]

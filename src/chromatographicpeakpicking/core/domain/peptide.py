@@ -1,6 +1,6 @@
 # src/chromatographicpeakpicking/core/domain/peptide.py
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Sequence
+from typing import List, Dict, Any, Optional
 from uuid import uuid4
 from .building_block import BuildingBlock
 
@@ -8,6 +8,14 @@ from .building_block import BuildingBlock
 class Peptide:
     """
     Represents a peptide sequence with its associated building blocks and properties.
+
+    Attributes:
+        sequence (List[BuildingBlock]): The sequence of building blocks (amino acids).
+        retention_time (Optional[float]): The retention time of the peptide.
+        peak_area (Optional[float]): The peak area of the peptide.
+        peak_height (Optional[float]): The peak height of the peptide.
+        metadata (Dict[str, Any]): Additional metadata about the peptide.
+        id (str): A unique identifier for the peptide.
     """
 
     sequence: List[BuildingBlock]

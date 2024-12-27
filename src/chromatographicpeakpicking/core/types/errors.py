@@ -37,7 +37,3 @@ class ValidationError(PipelineError):
 class ConfigurationError(PipelineError):
     """Raised when component configuration is invalid."""
     pass
-
-class ProcessingError(PipelineError):
-    """Raised when pipeline processing fails."""
-    pass

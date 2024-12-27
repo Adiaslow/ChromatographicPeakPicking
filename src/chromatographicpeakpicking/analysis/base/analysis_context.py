@@ -11,27 +11,36 @@ class AnalysisContext:
         self._analyzers: Dict[str, Analyzer] = {}
 
     def register_analyzer(self, name: str, analyzer: Analyzer) -> None:
-        """Register an analyzer with the context."""
-        self._analyzers[name] = analyzer
-        if self._logger:
-            self._logger.log_analysis_step(f"Registered analyzer: {name}")
+            """Register an analyzer with the context."""
+            self._analyzers[name] = analyzer
+            if self._logger:
+                self._logger.log_analysis_step(f"Registered analyzer: {name}", metrics={
+                    'analyzer_name': name,
+                    'analyzer_type': type(analyzer).__name__
+                })
 
     async def run_analysis(self, name: str, data: Any) -> AnalysisResult:
-        """Run analysis using a registered analyzer."""
-        if name not in self._analyzers:
-            raise ValueError(f"No analyzer registered with name: {name}")
+            """Run analysis using a registered analyzer."""
+            if name not in self._analyzers:
+                raise ValueError(f"No analyzer registered with name: {name}")
 
-        analyzer = self._analyzers[name]
+            analyzer = self._analyzers[name]
 
-        if self._logger:
-            self._logger.log_analysis_start(f"Starting analysis: {name}")
+            if self._logger:
+                self._logger.log_analysis_start(parameters={
+                    'analyzer_name': name,
+                    'data_type': type(data).__name__
+                })
 
-        if not await analyzer.validate(data):
-            raise ValueError("Input data validation failed")
+            if not await analyzer.validate(data):
+                raise ValueError("Input data validation failed")
 
-        result = await analyzer.analyze(data)
+            result = await analyzer.analyze(data)
 
-        if self._logger:
-            self._logger.log_analysis_end(f"Completed analysis: {name}")
+            if self._logger:
+                self._logger.log_analysis_end(results={
+                    'analyzer_name': name,
+                    'result_type': type(result).__name__
+                })
 
-        return result
+            return result

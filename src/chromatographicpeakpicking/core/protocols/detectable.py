@@ -1,4 +1,8 @@
 # src/chromatographicpeakpicking/core/protocols/detectable.py
+"""
+This module defines the PeakDetector protocol for peak detection algorithms.
+"""
+
 from typing import Protocol, List
 from ..domain.chromatogram import Chromatogram
 from ..domain.peak import Peak
@@ -8,8 +12,8 @@ class PeakDetector(Protocol):
 
     def detect(self, chromatogram: Chromatogram) -> List[Peak]:
         """Detect peaks in a chromatogram."""
-        ...
+        raise NotImplementedError
 
     def validate(self, chromatogram: Chromatogram) -> None:
         """Validate that the chromatogram can be processed."""
-        ...
+        raise NotImplementedError

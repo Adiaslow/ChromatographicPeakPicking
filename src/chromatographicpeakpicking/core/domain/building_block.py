@@ -7,13 +7,18 @@ from uuid import uuid4
 class BuildingBlock:
     """
     Represents a peptide building block (amino acid or modified amino acid).
+
+    This class encapsulates all information about a peptide building block,
+    including its name, mass, chemical formula, metadata, and unique identifier.
     """
 
-    id: str = field(default_factory=lambda: str(uuid4()))
     name: str
     mass: float
     formula: Optional[str] = None
+    smiles: Optional[str] = None
+    properties: Optional[Dict[str, Any]] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    id: str = field(default_factory=lambda: str(uuid4()))
 
     def __post_init__(self):
         """Validate building block data."""
@@ -29,8 +34,24 @@ class BuildingBlock:
             name=self.name,
             mass=self.mass,
             formula=self.formula,
+            smiles=self.smiles,
+            properties=self.properties,
             metadata=new_metadata
         )
+
+    def with_properties(self, **kwargs) -> 'BuildingBlock':
+            """Create new building block with updated properties."""
+            new_properties = self.properties.copy() if self.properties is not None else {}
+            new_properties.update(kwargs)
+            return BuildingBlock(
+                id=self.id,
+                name=self.name,
+                mass=self.mass,
+                formula=self.formula,
+                smiles=self.smiles,
+                properties=new_properties,
+                metadata=self.metadata
+            )
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, BuildingBlock):

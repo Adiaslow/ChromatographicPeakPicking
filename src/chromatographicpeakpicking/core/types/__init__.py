@@ -1,3 +1,8 @@
+# src/chromatographicpeakpicking/core/types/__init__.py
+"""
+This module aggregates and re-exports key components related to configuration, errors, and
+validation.
+"""
 from .config import (
     ConfigValidation,
     ConfigMetadata,

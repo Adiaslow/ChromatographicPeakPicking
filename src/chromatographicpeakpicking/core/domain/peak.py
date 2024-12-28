@@ -1,6 +1,10 @@
 # src/chromatographicpeakpicking/core/domain/peak.py
+"""
+This module defines the Peak class, which represents a chromatographic peak
+with its characteristics and metrics.
+"""
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from uuid import uuid4
 import numpy as np
 
@@ -45,7 +49,7 @@ class Peak:
         """Validate peak data after initialization."""
         if self.start_time >= self.end_time:
             raise ValueError("Start time must be less than end time")
-        if not (self.start_time <= self.apex_time <= self.end_time):
+        if not self.start_time <= self.apex_time <= self.end_time:
             raise ValueError("Apex time must be between start and end times")
         if self.height <= 0:
             raise ValueError("Height must be positive")
@@ -79,23 +83,23 @@ class Peak:
         return self.gaussian_params
 
     def with_gaussian_fit(self, params: Dict[str, float]) -> 'Peak':
-            """Create new peak instance with Gaussian fit parameters."""
-            return Peak(
-                id=self.id,
-                apex_time=self.apex_time,
-                apex_intensity=self.apex_intensity,
-                start_time=self.start_time,
-                end_time=self.end_time,
-                height=self.height,
-                area=self.area,
-                width_at_half_height=self.width_at_half_height,
-                asymmetry_factor=self.asymmetry_factor,
-                signal_to_noise=self.signal_to_noise,
-                resolution=self.resolution,
-                peak_capacity=self.peak_capacity,
-                raw_times=self.raw_times,
-                raw_intensities=self.raw_intensities,
-                baseline=self.baseline,
-                metadata=self.metadata,
-                gaussian_params=params
-            )
+        """Create new peak instance with Gaussian fit parameters."""
+        return Peak(
+            id=self.id,
+            apex_time=self.apex_time,
+            apex_intensity=self.apex_intensity,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            height=self.height,
+            area=self.area,
+            width_at_half_height=self.width_at_half_height,
+            asymmetry_factor=self.asymmetry_factor,
+            signal_to_noise=self.signal_to_noise,
+            resolution=self.resolution,
+            peak_capacity=self.peak_capacity,
+            raw_times=self.raw_times,
+            raw_intensities=self.raw_intensities,
+            baseline=self.baseline,
+            metadata=self.metadata,
+            gaussian_params=params
+        )

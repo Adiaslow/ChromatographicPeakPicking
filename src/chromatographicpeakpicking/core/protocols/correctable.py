@@ -1,12 +1,12 @@
 # src/chromatographicpeakpicking/core/protocols/correctable.py
 """
-This module defines the BaselineCorrector protocol for baseline correction algorithms.
+This module defines the Correctable protocol for correction algorithms.
 """
 
 from typing import Protocol
 from ..domain.chromatogram import Chromatogram
 
-class BaselineCorrector(Protocol):
+class Correctable(Protocol):
     """Protocol for baseline correction algorithms."""
 
     def correct(self, chromatogram: Chromatogram) -> Chromatogram:

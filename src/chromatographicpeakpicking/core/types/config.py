@@ -1,6 +1,9 @@
 # src/chromatographicpeakpicking/core/types/config.py
+"""
+This module defines configuration-related classes and enums for managing configurable components.
+"""
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from enum import Enum
 
 class ConfigValidation(Enum):
@@ -42,3 +45,17 @@ class BaseConfig:
     metadata: ConfigMetadata
     parameters: Dict[str, Any] = field(default_factory=dict)
     _validated: bool = field(default=False, init=False)
+
+@dataclass
+class GlobalConfig:
+    """Global configuration settings.
+
+    Attributes:
+        debug: Enable debug mode
+    """
+    debug: bool = field(default=False)
+    # Add other global configuration parameters as needed
+
+    def __post_init__(self):
+        # Initialize any other config settings here if needed
+        pass

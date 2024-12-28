@@ -288,8 +288,12 @@ class Chromatogram:
                 peak_capacity=peak.peak_capacity,
                 gaussian_params=peak.gaussian_params,
                 raw_times=peak.raw_times,
-                raw_intensities=peak.raw_intensities / factor if peak.raw_intensities is not None else None,
-                baseline=peak.baseline / factor if peak.baseline is not None else None,
+                raw_intensities=peak.raw_intensities / factor \
+                    if peak.raw_intensities is not None \
+                    else None,
+                baseline=peak.baseline / factor \
+                    if peak.baseline is not None \
+                    else None,
                 metadata=peak.metadata
             ) for peak in self.peaks
         ]

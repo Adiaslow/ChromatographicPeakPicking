@@ -1,10 +1,14 @@
+# src/chromatographicpeakpicking/core/protocols/__init__.py
+"""
+This module defines the core protocols for the ChromatographicPeakPicking library.
+"""
 from .analyzable import Analyzable
 from .configurable import Configurable
-# from .correctable import Correctable
-# from .detectable import Detectable
+from .correctable import Correctable
+from .detectable import Detectable
 from .error_handler import ErrorCollection, ErrorHandler, ErrorSeverity
 from .observable import Observable
-# from .parseable import Parseable
+from .parseable import Parseable
 from .serializable import Serializable
 from .validatable import Validatable
 from .visualizable import Visualizable

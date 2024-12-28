@@ -1,9 +1,13 @@
 # src/chromatographicpeakpicking/core/types/errors.py
+"""
+This module defines error handling constructs for the chromatographic peak picking application.
+"""
 from enum import Enum
 from dataclasses import dataclass
 from typing import Dict, Any
 
 class ErrorSeverity(Enum):
+    """Enumeration representing different levels of processing errors."""
     WARNING = "warning"
     ERROR = "error"
     CRITICAL = "critical"
@@ -32,8 +36,8 @@ class PipelineError(Exception):
 
 class ValidationError(PipelineError):
     """Raised when input validation fails."""
-    pass
+    raise NotImplementedError
 
 class ConfigurationError(PipelineError):
     """Raised when component configuration is invalid."""
-    pass
+    raise NotImplementedError

@@ -21,6 +21,10 @@ class Observer(Protocol):
         """Handle analysis progress updates."""
         raise NotImplementedError
 
+    def __str__(self) -> str:
+        """Return the observer name."""
+        raise NotImplementedError
+
 
 class Observable(Protocol):
     """Protocol for observable components."""

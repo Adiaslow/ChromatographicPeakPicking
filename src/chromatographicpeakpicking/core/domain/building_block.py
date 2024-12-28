@@ -1,4 +1,8 @@
 # src/chromatographicpeakpicking/core/domain/building_block.py
+"""
+This module defines the BuildingBlock class, which represents a peptide building block such as an
+amino acid or modified amino acid.
+"""
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional
 from uuid import uuid4
@@ -40,18 +44,18 @@ class BuildingBlock:
         )
 
     def with_properties(self, **kwargs) -> 'BuildingBlock':
-            """Create new building block with updated properties."""
-            new_properties = self.properties.copy() if self.properties is not None else {}
-            new_properties.update(kwargs)
-            return BuildingBlock(
-                id=self.id,
-                name=self.name,
-                mass=self.mass,
-                formula=self.formula,
-                smiles=self.smiles,
-                properties=new_properties,
-                metadata=self.metadata
-            )
+        """Create new building block with updated properties."""
+        new_properties = self.properties.copy() if self.properties is not None else {}
+        new_properties.update(kwargs)
+        return BuildingBlock(
+            id=self.id,
+            name=self.name,
+            mass=self.mass,
+            formula=self.formula,
+            smiles=self.smiles,
+            properties=new_properties,
+            metadata=self.metadata
+        )
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, BuildingBlock):

@@ -1,23 +1,28 @@
 # src/chromatographicpeakpicking/core/factories/pipeline_factory.py
+"""
+This module defines the PipelineFactory class, which is used to create instances of analysis
+pipelines for chromatographic peak picking.
+"""
 from dataclasses import dataclass, field
 from typing import Dict, Type, Optional
-from ..protocols.correctable import BaselineCorrector
-from ..protocols.detectable import PeakDetector
+from ..protocols.correctable import Correctable
+from ..protocols.detectable import Detectable
 from ..protocols.selectable import PeakSelector
+
 
 @dataclass
 class PipelineFactory:
     """Factory for creating analysis pipelines."""
 
-    _correctors: Dict[str, Type[BaselineCorrector]] = field(default_factory=dict)
-    _detectors: Dict[str, Type[PeakDetector]] = field(default_factory=dict)
+    _correctors: Dict[str, Type[Correctable]] = field(default_factory=dict)
+    _detectors: Dict[str, Type[Detectable]] = field(default_factory=dict)
     _selectors: Dict[str, Type[PeakSelector]] = field(default_factory=dict)
 
-    def register_corrector(self, name: str, corrector: Type[BaselineCorrector]) -> None:
+    def register_corrector(self, name: str, corrector: Type[Correctable]) -> None:
         """Register a baseline corrector type."""
         self._correctors[name] = corrector
 
-    def register_detector(self, name: str, detector: Type[PeakDetector]) -> None:
+    def register_detector(self, name: str, detector: Type[Detectable]) -> None:
         """Register a peak detector type."""
         self._detectors[name] = detector
 

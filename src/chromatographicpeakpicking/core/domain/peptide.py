@@ -1,4 +1,8 @@
 # src/chromatographicpeakpicking/core/domain/peptide.py
+"""
+This module defines the Peptide class, which represents a peptide sequence
+with its associated building blocks and properties.
+"""
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 from uuid import uuid4
@@ -61,7 +65,11 @@ class Peptide:
             metadata=self.metadata
         )
 
-    def with_peak_metrics(self, area: Optional[float] = None, height: Optional[float] = None) -> 'Peptide':
+    def with_peak_metrics(
+        self,
+        area: Optional[float] = None,
+        height: Optional[float] = None
+    ) -> 'Peptide':
         """Create new peptide with updated peak metrics."""
         return Peptide(
             id=self.id,

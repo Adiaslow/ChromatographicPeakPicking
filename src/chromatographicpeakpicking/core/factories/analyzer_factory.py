@@ -1,4 +1,7 @@
 # src/chromatographicpeakpicking/core/factories/analyzer_factory.py
+"""
+This module defines the AnalyzerFactory class, which is used to create instances of analysis components for chromatographic peak picking.
+"""
 from dataclasses import dataclass, field
 from typing import Dict, Type, Any
 from ..protocols.analyzable import Analyzable

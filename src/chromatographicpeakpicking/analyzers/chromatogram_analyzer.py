@@ -10,7 +10,7 @@ from src.chromatographicpeakpicking.core.protocols.configurable import Configura
 from src.chromatographicpeakpicking.core.types.config import BaseConfig, ConfigMetadata, ConfigValidation
 from src.chromatographicpeakpicking.core.types.validation import ValidationResult
 from src.chromatographicpeakpicking.core.domain.chromatogram import Chromatogram
-from src.chromatographicpeakpicking.config.global_config import GlobalConfig
+from src.chromatographicpeakpicking.core.types.config import GlobalConfig
 
 @dataclass
 class ChromatogramAnalyzerConfig(BaseConfig):

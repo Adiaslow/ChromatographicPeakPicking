@@ -36,8 +36,8 @@ class PipelineError(Exception):
 
 class ValidationError(PipelineError):
     """Raised when input validation fails."""
-    raise NotImplementedError
+    print("There was an error with the input validation.")
 
 class ConfigurationError(PipelineError):
     """Raised when component configuration is invalid."""
-    raise NotImplementedError
+    print("There was an error with the component configuration.")

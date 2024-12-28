@@ -218,10 +218,12 @@ class Hierarchy(Generic[T, V]):
         """
         return self.peptide_values.get(peptide)
 
-    def visualize_hierarchy(self, figsize=(12, 8), node_size=2000,
-                           with_values: bool = False,
-                           save_path: Optional[str] = None,
-                           color_scheme: Optional[Dict[int, str]] = None) -> None:
+    def visualize_hierarchy(
+        self, figsize=(12, 8), node_size=2000,
+        with_values: bool = False,
+        save_path: Optional[str] = None,
+        color_scheme: Optional[Dict[int, str]] = None
+    ) -> None:
         """Visualize a Hierarchy object using NetworkX and Matplotlib.
 
         Args:

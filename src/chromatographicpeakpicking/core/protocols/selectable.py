@@ -1,12 +1,12 @@
 # src/chromatographicpeakpicking/core/protocols/selectable.py
 """
-This module defines the PeakSelector protocol for peak selection algorithms.
+This module defines the Selectable protocol for peak selection algorithms.
 """
 
 from typing import Protocol, List
 from ..domain.peak import Peak
 
-class PeakSelector(Protocol):
+class Selectable(Protocol):
     """Protocol for peak selection algorithms."""
 
     def select(self, peaks: List[Peak]) -> List[Peak]:

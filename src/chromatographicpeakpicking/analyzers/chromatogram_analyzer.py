@@ -237,7 +237,7 @@ class ChromatogramAnalyzer(Configurable[ChromatogramAnalyzerConfig]):
         try:
             coefficients = np.polyfit(chrom.time, chrom.intensity, 1)
             drift = float(coefficients[0])
-        except np.RankWarning:
+        except np.exceptions.RankWarning:
             if self.global_config.debug:
                 self.logger.debug("RankWarning encountered in baseline drift calculation")
             drift = float(np.nan)

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Type, Optional
 from ..protocols.correctable import Correctable
 from ..protocols.detectable import Detectable
-from ..protocols.selectable import PeakSelector
+from ..protocols.selectable import Selectable
 
 
 @dataclass
@@ -16,7 +16,7 @@ class PipelineFactory:
 
     _correctors: Dict[str, Type[Correctable]] = field(default_factory=dict)
     _detectors: Dict[str, Type[Detectable]] = field(default_factory=dict)
-    _selectors: Dict[str, Type[PeakSelector]] = field(default_factory=dict)
+    _selectors: Dict[str, Type[Selectable]] = field(default_factory=dict)
 
     def register_corrector(self, name: str, corrector: Type[Correctable]) -> None:
         """Register a baseline corrector type."""
@@ -26,7 +26,7 @@ class PipelineFactory:
         """Register a peak detector type."""
         self._detectors[name] = detector
 
-    def register_selector(self, name: str, selector: Type[PeakSelector]) -> None:
+    def register_selector(self, name: str, selector: Type[Selectable]) -> None:
         """Register a peak selector type."""
         self._selectors[name] = selector
 

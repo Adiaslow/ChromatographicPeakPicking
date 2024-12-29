@@ -1,47 +1,41 @@
-# src/peptide_chroma/pipeline/builders/pipeline_builder.py
-from dataclasses import dataclass, field
-from typing import Optional, List
-from ...core.protocols.baseline_corrector import BaselineCorrector
-from ...core.protocols.detectable import PeakDetector
-from ...core.domain.chromatogram import Chromatogram
-from ..observers.progress_observer import ProgressObserver
+# src/chromatographicpeakpicking/pipeline/builders/pipeline_builder.py
 
-@dataclass
-class AnalysisPipeline:
-    """Configurable pipeline for chromatogram analysis."""
 
-    baseline_corrector: Optional[BaselineCorrector] = None
-    peak_detector: Optional[PeakDetector] = None
-    observers: List[ProgressObserver] = field(default_factory=list)
+class PipelineBuilder:
+    def __init__(self):
+        self.pipeline = AnalysisPipeline()
 
-    def process(self, chromatogram: Chromatogram) -> Chromatogram:
-        """Process chromatogram through the pipeline."""
-        current = chromatogram
+    def add_analyzable(self, analyzable):
+        self.pipeline.add_analyzable(analyzable)
+        return self
 
-        # Apply baseline correction if configured
-        if self.baseline_corrector:
-            self._notify_observers("baseline_correction", 0.0)
-            self.baseline_corrector.validate(current)
-            current = self.baseline_corrector.correct(current)
-            self._notify_observers("baseline_correction", 1.0)
+    def add_corrector(self, corrector):
+        self.pipeline.add_corrector(corrector)
+        return self
 
-        # Apply peak detection if configured
-        if self.peak_detector:
-            self._notify_observers("peak_detection", 0.0)
-            self.peak_detector.validate(current)
-            peaks = self.peak_detector.detect(current)
-            current = Chromatogram(
-                time=current.time,
-                intensity=current.intensity,
-                metadata=current.metadata,
-                peaks=peaks,
-                baseline=current.baseline
-            )
-            self._notify_observers("peak_detection", 1.0)
+    def add_detector(self, detector):
+        self.pipeline.add_detector(detector)
+        return self
 
-        return current
+    def add_analyzable(self, analyzable):
+        self.pipeline.add_analyzable(analyzable)
+        return self
 
-    def _notify_observers(self, stage: str, progress: float) -> None:
-        """Notify observers of pipeline progress."""
-        for observer in self.observers:
-            observer.update(stage, progress)
+    def add_processor(self, processor):
+        self.pipeline.add_processor(processor)
+        return self
+
+    def add_selector(self, selector):
+        self.pipeline.add_selector(selector)
+        return self
+
+    def add_visualizable(self, visualizable):
+        self.pipeline.add_visualizable(visualizable)
+        return self
+
+    def add_serializable(self, serializable):
+        self.pipeline.add_serializable(serializable)
+        return self
+
+    def build(self):
+        return self.pipeline

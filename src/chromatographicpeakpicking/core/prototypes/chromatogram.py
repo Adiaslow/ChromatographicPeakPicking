@@ -1,10 +1,28 @@
-# src/chromatographicpeakpicking/core/domain/chromatogram.py
+# src/chromatographicpeakpicking/core/prototypes/chromatogram.py
+"""
+Module: chromatogram
+
+This module defines the Chromatogram class, which represents a chromatogram
+with its time series data and associated peaks. The Chromatogram class follows the
+Prototype Pattern to allow for efficient cloning of instances with optional modifications.
+
+Design Patterns:
+    - Prototype Pattern: Used to create new objects by copying an existing object (the prototype).
+
+Rationale:
+    - Efficiency: Cloning an existing object can be more efficient than creating a new one from
+        scratch, especially when the object has already been initialized with a complex state.
+    - Simplicity: The Prototype Pattern simplifies object creation by allowing for the reuse of
+        existing objects with optional modifications.
+    - Flexibility: Provides flexibility in creating new objects based on an existing prototype with
+        slight variations, reducing the need for multiple constructors or factory methods.
+"""
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 from uuid import uuid4
 import numpy as np
+import copy
 from .peak import Peak
-from .building_block import BuildingBlock
 
 @dataclass(frozen=True)
 class Chromatogram:
@@ -13,6 +31,19 @@ class Chromatogram:
 
     This class encapsulates all information about a chromatogram, including
     raw data, detected peaks, baseline, and metadata.
+
+    Attributes:
+        time (np.ndarray): The time points of the chromatogram.
+        intensity (np.ndarray): The intensity values of the chromatogram.
+        peaks (List[Peak]): The list of detected peaks in the chromatogram.
+        baseline (Optional[np.ndarray]): The baseline values of the chromatogram.
+        noise_level (Optional[float]): The noise level of the chromatogram.
+        y_corrected (Optional[np.ndarray]): The baseline-corrected intensity values.
+        search_mask (Optional[np.ndarray]): The search mask for peak detection.
+        properties (Dict[str, Any]): Additional properties of the chromatogram.
+        picked_peak (Optional[Peak]): The selected peak of interest.
+        metadata (Dict[str, Any]): Additional metadata about the chromatogram.
+        id (str): A unique identifier for the chromatogram.
     """
 
     # Core data
@@ -25,11 +56,10 @@ class Chromatogram:
     noise_level: Optional[float] = None
     y_corrected: Optional[np.ndarray] = None
     search_mask: Optional[np.ndarray] = None
-    metrics: Optional[Any] = None  # Use Any to avoid circular import
+    properties: Dict[str, Any] = field(default_factory=dict)
     picked_peak: Optional[Peak] = None
 
     # Metadata
-    building_blocks: List[BuildingBlock] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     id: str = field(default_factory=lambda: str(uuid4()))
@@ -37,7 +67,7 @@ class Chromatogram:
     def __post_init__(self):
         """Validate chromatogram data after initialization."""
         if len(self.time) != len(self.intensity):
-            raise ValueError("Time and intensity arrays must have same length")
+            raise ValueError("Time and intensity arrays must have the same length")
         if len(self.time) < 2:
             raise ValueError("Chromatogram must have at least 2 points")
         if not isinstance(self.time, np.ndarray):
@@ -45,116 +75,84 @@ class Chromatogram:
         if not isinstance(self.intensity, np.ndarray):
             object.__setattr__(self, 'intensity', np.array(self.intensity))
         if self.baseline is not None and len(self.baseline) != len(self.time):
-            raise ValueError("Baseline must have same length as time array")
+            raise ValueError("Baseline must have the same length as time array")
 
     @property
     def length(self) -> int:
-        """Get number of data points."""
+        """Get the number of data points."""
         return len(self.time)
 
     @property
     def duration(self) -> float:
-        """Get total chromatogram duration."""
+        """Get the total chromatogram duration."""
         return self.time[-1] - self.time[0]
 
     @property
     def num_peaks(self) -> int:
-        """Get number of detected peaks."""
+        """Get the number of detected peaks."""
         return len(self.peaks)
 
     def get_intensity_range(self) -> tuple[float, float]:
-        """Get intensity range."""
+        """Get the intensity range."""
         return float(np.min(self.intensity)), float(np.max(self.intensity))
 
     def get_time_range(self) -> tuple[float, float]:
-        """Get time range."""
+        """Get the time range."""
         return float(self.time[0]), float(self.time[-1])
 
     def get_signal_at_time(self, t: float) -> Optional[float]:
-        """Get intensity value at specific time point."""
+        """Get the intensity value at a specific time point."""
         idx = np.searchsorted(self.time, t)
         if idx >= len(self.time):
             return None
         return float(self.intensity[idx])
 
     def get_peaks_in_range(self, start_time: float, end_time: float) -> List[Peak]:
-        """Get peaks within specified time range."""
+        """Get peaks within the specified time range."""
         return [
             peak for peak in self.peaks
-            if start_time <= peak.apex_time <= end_time
+            if start_time <= peak.time <= end_time
         ]
 
+    def clone(self, **kwargs: Any) -> 'Chromatogram':
+        """
+        Clone the current chromatogram, allowing for optional overrides.
+
+        Args:
+            kwargs (Any): Attributes to override in the cloned instance.
+
+        Returns:
+            Chromatogram: A new Chromatogram instance with a new unique ID.
+        """
+        new_instance = copy.deepcopy(self)
+        # Set a new unique ID unless explicitly provided in kwargs
+        new_instance_id = kwargs.get('id', str(uuid4()))
+        object.__setattr__(new_instance, 'id', new_instance_id)
+        for key, value in kwargs.items():
+            object.__setattr__(new_instance, key, value)
+        return new_instance
+
     def with_peaks(self, peaks: List[Peak]) -> 'Chromatogram':
-        """Create new chromatogram instance with updated peaks."""
-        return Chromatogram(
-            id=self.id,
-            time=self.time,
-            intensity=self.intensity,
-            peaks=peaks,
-            baseline=self.baseline,
-            noise_level=self.noise_level,
-            y_corrected=self.y_corrected,
-            search_mask=self.search_mask,
-            metrics=self.metrics,
-            picked_peak=self.picked_peak,
-            building_blocks=self.building_blocks,
-            metadata=self.metadata
-        )
+        """Create a new chromatogram instance with updated peaks."""
+        return self.clone(peaks=peaks)
 
     def with_baseline(self, baseline: np.ndarray) -> 'Chromatogram':
-        """Create new chromatogram instance with baseline."""
+        """Create a new chromatogram instance with baseline."""
         if len(baseline) != len(self.time):
-            raise ValueError("Baseline must have same length as time array")
-        return Chromatogram(
-            id=self.id,
-            time=self.time,
-            intensity=self.intensity,
-            peaks=self.peaks,
-            baseline=baseline,
-            noise_level=self.noise_level,
-            y_corrected=self.y_corrected,
-            search_mask=self.search_mask,
-            metrics=self.metrics,
-            picked_peak=self.picked_peak,
-            building_blocks=self.building_blocks,
-            metadata=self.metadata
-        )
+            raise ValueError("Baseline must have the same length as the time array")
+        return self.clone(baseline=baseline)
 
-    def with_building_blocks(self, blocks: List[BuildingBlock]) -> 'Chromatogram':
-        """Create new chromatogram instance with updated building blocks."""
-        return Chromatogram(
-            id=self.id,
-            time=self.time,
-            intensity=self.intensity,
-            peaks=self.peaks,
-            baseline=self.baseline,
-            noise_level=self.noise_level,
-            y_corrected=self.y_corrected,
-            search_mask=self.search_mask,
-            metrics=self.metrics,
-            picked_peak=self.picked_peak,
-            building_blocks=blocks,
-            metadata=self.metadata
-        )
+    def with_properties(self, **kwargs: Any) -> 'Chromatogram':
+        """Create a new chromatogram instance with updated properties."""
+        new_properties = self.properties.copy()
+        new_properties.update(kwargs)
+        return self.clone(properties=new_properties)
 
     def with_metadata(self, **kwargs) -> 'Chromatogram':
-        """Create new chromatogram instance with updated metadata."""
+        """Create a new chromatogram instance with updated metadata."""
         new_metadata = self.metadata.copy()
         new_metadata.update(kwargs)
-        return Chromatogram(
-            id=self.id,
-            time=self.time,
-            intensity=self.intensity,
-            peaks=self.peaks,
-            baseline=self.baseline,
-            noise_level=self.noise_level,
-            y_corrected=self.y_corrected,
-            search_mask=self.search_mask,
-            metrics=self.metrics,
-            picked_peak=self.picked_peak,
-            building_blocks=self.building_blocks,
-            metadata=new_metadata
-        )
+        return self.clone(metadata=new_metadata)
 
     def get_corrected_intensity(self) -> np.ndarray:
         """Get baseline-corrected intensity values."""
@@ -163,13 +161,13 @@ class Chromatogram:
         return self.intensity - self.baseline
 
     def slice(self, start_time: float, end_time: float) -> 'Chromatogram':
-        """Create new chromatogram containing only data within specified time range."""
+        """Create a new chromatogram containing only data within the specified time range."""
         if start_time >= end_time:
             raise ValueError("Start time must be less than end time")
 
         mask = (self.time >= start_time) & (self.time <= end_time)
         if not np.any(mask):
-            raise ValueError("No data points in specified time range")
+            raise ValueError("No data points in the specified time range")
 
         # Slice time and intensity arrays
         new_time = self.time[mask]
@@ -187,14 +185,13 @@ class Chromatogram:
             noise_level=self.noise_level,
             y_corrected=self.y_corrected,
             search_mask=self.search_mask,
-            metrics=self.metrics,
+            properties=self.properties,
             picked_peak=self.picked_peak,
-            building_blocks=self.building_blocks,
             metadata=self.metadata
         )
 
     def resample(self, num_points: int) -> 'Chromatogram':
-        """Create new chromatogram with resampled data points."""
+        """Create a new chromatogram with resampled data points."""
         if num_points < 2:
             raise ValueError("Number of points must be at least 2")
 
@@ -216,14 +213,13 @@ class Chromatogram:
             noise_level=self.noise_level,
             y_corrected=self.y_corrected,
             search_mask=self.search_mask,
-            metrics=self.metrics,
+            properties=self.properties,
             picked_peak=self.picked_peak,
-            building_blocks=self.building_blocks,
             metadata=self.metadata
         )
 
     def smooth(self, window_length: int = 5, polyorder: int = 2) -> 'Chromatogram':
-        """Create new chromatogram with smoothed intensity values using Savitzky-Golay filter."""
+        """Create a new chromatogram with smoothed intensity values using Savitzky-Golay filter."""
         from scipy.signal import savgol_filter
 
         if window_length >= len(self.time):
@@ -247,14 +243,13 @@ class Chromatogram:
             noise_level=self.noise_level,
             y_corrected=self.y_corrected,
             search_mask=self.search_mask,
-            metrics=self.metrics,
+            properties=self.properties,
             picked_peak=self.picked_peak,
-            building_blocks=self.building_blocks,
             metadata=self.metadata
         )
 
     def normalize(self, method: str = 'max') -> 'Chromatogram':
-        """Create new chromatogram with normalized intensity values."""
+        """Create a new chromatogram with normalized intensity values."""
         if method not in ['max', 'area', 'sum']:
             raise ValueError("Normalization method must be 'max', 'area', or 'sum'")
 
@@ -274,27 +269,12 @@ class Chromatogram:
         # Adjust peak intensities
         normalized_peaks = [
             Peak(
-                id=peak.id,
-                apex_time=peak.apex_time,
-                apex_intensity=peak.apex_intensity / factor,
-                start_time=peak.start_time,
-                end_time=peak.end_time,
-                height=peak.height / factor,
-                area=peak.area / factor,
-                width_at_half_height=peak.width_at_half_height,
-                asymmetry_factor=peak.asymmetry_factor,
-                signal_to_noise=peak.signal_to_noise,
-                resolution=peak.resolution,
-                peak_capacity=peak.peak_capacity,
-                gaussian_params=peak.gaussian_params,
-                raw_times=peak.raw_times,
-                raw_intensities=peak.raw_intensities / factor \
-                    if peak.raw_intensities is not None \
-                    else None,
-                baseline=peak.baseline / factor \
-                    if peak.baseline is not None \
-                    else None,
-                metadata=peak.metadata
+                time=peak.time,
+                index=peak.index,
+                intensity=float(peak.intensity / factor),
+                properties=peak.properties,
+                metadata=peak.metadata,
+                id=peak.id
             ) for peak in self.peaks
         ]
 
@@ -303,17 +283,16 @@ class Chromatogram:
             intensity=normalized_intensity,
             peaks=normalized_peaks,
             baseline=normalized_baseline,
-            noise_level=self.noise_level / factor if self.noise_level is not None else None,
+            noise_level=float(self.noise_level / factor) if self.noise_level is not None else None,
             y_corrected=self.y_corrected,
             search_mask=self.search_mask,
-            metrics=self.metrics,
+            properties=self.properties,
             picked_peak=self.picked_peak,
-            building_blocks=self.building_blocks,
             metadata=self.metadata
         )
 
     def __len__(self) -> int:
-        """Get number of data points."""
+        """Get the number of data points."""
         return len(self.time)
 
     def __eq__(self, other: object) -> bool:
@@ -322,8 +301,7 @@ class Chromatogram:
             return NotImplemented
         return (
             np.array_equal(self.time, other.time) and
-            np.array_equal(self.intensity, other.intensity) and
-            self.peaks == other.peaks
+            np.array_equal(self.intensity, other.intensity)
         )
 
     def __str__(self) -> str:

@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from typing import Dict, Any
 from enum import Enum
 
+from ..prototypes.building_block import BuildingBlock
+
 class ConfigValidation(Enum):
     """Configuration validation levels."""
     STRICT = "strict"       # Fail on any validation error
@@ -54,8 +56,13 @@ class GlobalConfig:
         debug: Enable debug mode
     """
     debug: bool = field(default=False)
-    # Add other global configuration parameters as needed
-
+    null_building_block: BuildingBlock = BuildingBlock(
+        name="NULL",
+        mass=0.0,
+        formula="",
+        smiles="",
+        metadata={"is_null": True}
+    )
     def __post_init__(self):
         # Initialize any other config settings here if needed
         pass

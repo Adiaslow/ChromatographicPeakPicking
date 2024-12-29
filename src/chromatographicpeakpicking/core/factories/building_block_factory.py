@@ -2,61 +2,99 @@
 """
 Module: building_block_factory
 
-This module defines the BuildingBlockFactory class, which provides a method for creating
-BuildingBlock instances using the Factory Pattern.
+This module defines the BuildingBlockFactory class, which is responsible for creating BuildingBlock
+instances. The BuildingBlockFactory class follows the Factory Pattern and the Prototype Pattern to
+allow for efficient creation and cloning of BuildingBlock instances with optional modifications.
 
 Design Patterns:
-    - Factory Pattern: Used to create objects without specifying the exact class of the object that
-      will be created. It provides a way to encapsulate the instantiation logic and centralize object
-      creation in a single location.
-
+    - Factory Pattern: Used to create objects without specifying the exact class of object that will
+        be created.
+    - Prototype Pattern: Used to create new objects by copying an existing BuildingBlock instance.
+    - Singleton Pattern: Used to ensure that only one instance of the BuildingBlockCache is created.
 Rationale:
-    - Encapsulation: The Factory Pattern encapsulates the instantiation logic, making it easier to manage
-      and maintain.
-    - Validation: Allows for centralized validation of object creation parameters, ensuring that all created
-      objects are in a valid state.
-    - Flexibility: Provides flexibility in creating different types of objects, allowing for changes in the
-      creation process without affecting the client code.
-    - Decoupling: Decouples the client code from the specific classes being instantiated, promoting the
-      Open/Closed Principle by enabling the addition of new types of objects without modifying existing code.
+    - Efficiency: Creating building blocks using a factory can streamline the process, especially
+        when dealing with complex initialization logic.
+    - Simplicity: The Factory Pattern simplifies object creation by encapsulating the creation logic.
+    - Flexibility: The Prototype Pattern provides flexibility in creating new objects based on an
+        existing prototype with slight variations, reducing the need for multiple constructors or
+        factory methods.
 """
-from typing import Dict, Any, Optional
+
+from typing import Dict, Any
 from ..prototypes.building_block import BuildingBlock
+from ...implementations.singletons.building_block_cache import BuildingBlockCache
 
 class BuildingBlockFactory:
     """
-    Factory class for creating BuildingBlock instances.
+    Responsible for creating BuildingBlock instances.
 
-    This class encapsulates the logic for creating BuildingBlock instances, ensuring that all
-    necessary validations are performed during the creation process.
+    This class encapsulates the logic for creating new BuildingBlock instances,
+    including the creation of building blocks with specific properties and metadata.
+
+    Attributes:
+        cache (BuildingBlockCache): The singleton cache for storing and retrieving building block prototypes.
     """
 
-    @staticmethod
-    def create(name: str, smiles: str, properties: Optional[Dict[str, Any]] = None,
-               metadata: Optional[Dict[str, Any]] = None) -> BuildingBlock:
+    def __init__(self):
+        """Initialize the BuildingBlockFactory with a singleton cache."""
+        self.cache = BuildingBlockCache()
+
+    def register_prototype(self, name: str, building_block: BuildingBlock) -> None:
+            """
+            Register a prototype building block in the cache.
+
+            Args:
+                name (str): The name to register the prototype under.
+                building_block (BuildingBlock): The BuildingBlock instance to register as a prototype.
+
+            Raises:
+                AttributeError: If self.cache is None
+            """
+            if self.cache is None:
+                raise AttributeError("Cache has not been initialized")
+            self.cache.set(name, building_block)
+
+    def create_building_block(self, prototype_name: str, **kwargs: Any) -> BuildingBlock:
+            """
+            Create a new BuildingBlock instance based on a registered prototype, allowing for optional overrides.
+
+            Args:
+                prototype_name (str): The name of the prototype to use as the basis for the new instance.
+                kwargs (Any): Attributes to override in the new instance.
+
+            Returns:
+                BuildingBlock: A new BuildingBlock instance based on the prototype with the specified overrides.
+
+            Raises:
+                ValueError: If the prototype_name is not registered.
+                AttributeError: If self.cache is None.
+            """
+            if self.cache is None:
+                raise AttributeError("Cache has not been initialized")
+            prototype = self.cache.get(prototype_name)
+            if prototype is None:
+                raise ValueError(f"Prototype '{prototype_name}' is not registered.")
+            return prototype.clone(**kwargs)
+
+    def list_prototypes(self) -> Dict[str, BuildingBlock]:
         """
-        Create a new BuildingBlock instance.
-
-        Args:
-            name (str): The name of the building block.
-            smiles (str): The SMILES string of the building block.
-            properties (Optional[Dict[str, Any]]): Additional properties of the building block.
-            metadata (Optional[Dict[str, Any]]): Metadata associated with the building block.
-
-        Raises:
-            ValueError: If the building block name is empty.
-            ValueError: If the building block SMILES string is empty.
+        List all registered prototype building blocks.
 
         Returns:
-            BuildingBlock: A new BuildingBlock instance.
+            Dict[str, BuildingBlock]: A dictionary of registered prototype building blocks.
         """
-        if not name:
-            raise ValueError("Building block name cannot be empty")
-        if not smiles:
-            raise ValueError("Building block SMILES string cannot be empty")
-        return BuildingBlock(
-            name=name,
-            smiles=smiles,
-            properties=properties or {},
-            metadata=metadata or {}
-        )
+        return self.cache.cache
+
+    def unregister_prototype(self, name: str) -> None:
+        """
+        Unregister a prototype building block from the cache.
+
+        Args:
+            name (str): The name of the prototype to unregister.
+
+        Raises:
+            ValueError: If the prototype_name is not registered.
+        """
+        if self.cache.get(name) is None:
+            raise ValueError(f"Prototype '{name}' is not registered.")
+        self.cache.remove(name)

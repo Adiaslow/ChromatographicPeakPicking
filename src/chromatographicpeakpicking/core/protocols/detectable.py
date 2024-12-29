@@ -4,8 +4,10 @@ This module defines the Detectable protocol for peak detection algorithms.
 """
 
 from typing import Protocol, List
-from ..domain.chromatogram import Chromatogram
-from ..domain.peak import Peak
+from ..prototypes import (
+    Chromatogram,
+    Peak
+)
 
 class Detectable(Protocol):
     """Protocol for peak detection algorithms."""

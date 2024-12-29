@@ -4,7 +4,7 @@ This module defines the Selectable protocol for peak selection algorithms.
 """
 
 from typing import Protocol, List
-from ..domain.peak import Peak
+from ..prototypes import Peak
 
 class Selectable(Protocol):
     """Protocol for peak selection algorithms."""

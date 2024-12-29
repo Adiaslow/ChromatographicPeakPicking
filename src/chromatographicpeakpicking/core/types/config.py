@@ -57,9 +57,7 @@ class GlobalConfig:
     """
     debug: bool = field(default=False)
     null_building_block: BuildingBlock = BuildingBlock(
-        name="NULL",
-        mass=0.0,
-        formula="",
+        name="Null",
         smiles="",
         metadata={"is_null": True}
     )

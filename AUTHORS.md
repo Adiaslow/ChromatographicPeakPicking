@@ -12,7 +12,6 @@ Professor
 **Affiliation**
 - Division: Physical & Biological Sciences Division
 - Department: Chemistry & Biochemistry Department
-- Title: Professor
 - Lab: Lokey Lab
 
 **Areas of Expertise**
@@ -30,23 +29,25 @@ Professor
 **Mail Stop**
 - Chemistry
 
-**Biography, Education, and Training**
+**Education**
 - Ph.D., University of Texas, Austin
 
 ---
 
-## Graduate
+## Graduate Student
 
 **Grant Andrew Koch**
-Graduate - Lokey Lab
+Graduate
 - Lab: 831-459-5056
 - Email: [gakoch@ucsc.edu](mailto:gakoch@ucsc.edu)
 
 **Affiliation**
 - Division: Physical & Biological Sciences Division
-- Department/College/Unit: Chemistry & Biochemistry Department
-- Title: Graduate
+- Department: Chemistry & Biochemistry Department
 - Lab: Lokey Lab
+
+**Web Site**
+- [Lokey Lab](https://lokey.chemistry.ucsc.edu/)
 
 **Locations**
 - Physical Sciences Building, Room 365
@@ -59,14 +60,25 @@ Graduate - Lokey Lab
 ## Undergraduate Student
 
 **Adam Michael Murray**
+Undergraduate
 - Email: [admmurra@ucsc.edu](mailto:admmurra@ucsc.edu)
-- Personal Email: [a.murray0413@gmail.com](mailto:a.murray0413@gmail.com)
-- Title: Undergraduate Student
 
 **Affiliation**
-- Department/College/Unit: Chemistry & Biochemistry Department
-- Undergraduate
+- Division: Physical & Biological Sciences Division
+- Department: Chemistry & Biochemistry Department
+- Lab: Lokey Lab
 
 **Additional Affiliations**
 - Baskin Engineering at University of California, Santa Cruz
 - Department of Physiology and Membrane Biology at University of California, Davis
+
+**Web Site**
+- [Lokey Lab](https://lokey.chemistry.ucsc.edu/)
+
+**Locations**
+- Physical Sciences Building, Room 365
+
+**Mail Stop**
+- Chemistry
+
+---
